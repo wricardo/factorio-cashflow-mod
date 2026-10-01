@@ -14,7 +14,7 @@ M.roles = {
     { key = "interest_out", name = "cf-freeplay-belt", x = 1, y = 0, label = "INTEREST OUT", output = true },
   }, ports = { "borrow_in", "pay_in", "interest_out" } },
   vault = { helpers = {
-    { key = "deposit_in", name = "cf-freeplay-belt", x = -1, y = 0, label = "DEPOSIT IN", output = false }, { key = "return_out", name = "cf-freeplay-belt", x = 1, y = 0, label = "RETURN OUT", output = true },
+    { key = "deposit_in", name = "cf-freeplay-belt", x = -2, y = 0, label = "DEPOSIT IN", output = false }, { key = "return_out", name = "cf-freeplay-belt", x = 2, y = 0, label = "RETURN OUT", output = true },
   }, ports = { "deposit_in", "return_out" } },
 }
 

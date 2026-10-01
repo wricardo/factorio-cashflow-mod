@@ -276,4 +276,13 @@ function T.copper_on_pay_in_does_not_increase_debt()
   h.run_ticks(2)
   eq(cf.debt_cents, 1800000)
 end
+
+function T.asset_warehouse_has_clear_belt_ports_and_label()
+  local h, player = setup()
+  local vault = h.build("cf-freeplay-vault", player, { x = 10, y = 10 })
+  local machine = storage.cf_freeplay.machines[vault.unit_number]
+  eq(machine.label.text, "Asset Warehouse")
+  eq(machine.entities.deposit_in.position.x, 8)
+  eq(machine.entities.return_out.position.x, 12)
+end
 return T

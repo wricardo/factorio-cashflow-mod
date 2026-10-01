@@ -10,6 +10,27 @@ local function locked_copy(proto_type, source, name, overrides)
   return p
 end
 
+-- Warehousing artwork by David-John Miller (Anoyomouse), used with permission.
+-- Full MIT notice: THIRD_PARTY_LICENSES.md.
+local warehouse_picture = {
+  layers = {
+    {
+      filename = "__cashflow-freeplay__/graphics/warehouse/warehouse-basic.png",
+      width = 520,
+      height = 480,
+      scale = 0.2,
+    },
+    {
+      filename = "__cashflow-freeplay__/graphics/warehouse/warehouse-basic-shadow.png",
+      width = 520,
+      height = 480,
+      shift = { 0.4, 0 },
+      scale = 0.2,
+      draw_as_shadow = true,
+    },
+  },
+}
+
 local function anchor(name, source, order)
   local entity = table.deepcopy(data.raw["container"][source])
   entity.name = name
@@ -22,6 +43,11 @@ local function anchor(name, source, order)
   entity.corpse = "small-remnants"
   entity.order = order
   entity.localised_name = { "entity-name." .. name }
+  if name == "cf-freeplay-vault" then
+    entity.picture = warehouse_picture
+    entity.collision_box = { { -1.2, -1.2 }, { 1.2, 1.2 } }
+    entity.selection_box = { { -1.5, -1.5 }, { 1.5, 1.5 } }
+  end
 
   local item = table.deepcopy(data.raw.item["iron-chest"])
   item.name = name

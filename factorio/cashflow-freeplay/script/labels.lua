@@ -8,6 +8,7 @@ local function destroy(machine)
   machine.label, machine.port_labels = nil, {}
 end
 local function title(role)
+  if role == "vault" then return "Asset Warehouse" end
   return role:sub(1, 1):upper() .. role:sub(2)
 end
 local function port_offset(port)

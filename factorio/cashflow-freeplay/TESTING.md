@@ -3,10 +3,10 @@
 ## Install
 
 ```bash
-npm run package:factorio-freeplay
+npm run package:factorio
 ```
 
-Copy `factorio/dist/cashflow-freeplay_0.2.9.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+Copy `factorio/dist/cashflow-freeplay_0.2.14.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
 ## Construction policy
 
 Enabled vanilla entities:
@@ -30,10 +30,10 @@ Upgrading from `0.2.8` restores recipe defaults, reapplies researched technology
 
 ## One account
 
-1. Craft and place one Cashflow Controller, Income Station, Expense Station, Cashflow Station, Debt Station, and Asset Vault.
-2. Open each station and select the controller. Cashflow, Debt, and Vault are required before Start; Income and Expense are optional. Configure them while the controller is paused; fields are locked while it runs. Set Income to `$5,000`, Expense to `$2,000` with `Needs`, and set the controller's debt APR and asset return.
+1. Craft and place one Cashflow Controller, Income Station, Expense Station, Cashflow Station, Debt Station, and Asset Warehouse. The Asset Warehouse is a 3×3 Warehouse building with `DEPOSIT IN` and `RETURN OUT` ports two tiles from its centre.
+2. Open each station and select the controller. Cashflow, Debt, and Asset Warehouse are required before Start; Income and Expense are optional. Configure them while the controller is paused; fields are locked while it runs. Set Income to `$5,000`, Expense to `$2,000` with `Needs`, and set the controller's debt APR and asset return.
 3. Every helper belt has a colored port label. Green labels are outputs; orange labels are inputs. Route `IRON OUT` to `CASH IN`, `COPPER OUT` to `BILLS IN`, `SURPLUS OUT` to `DEPOSIT IN`, `UNPAID OUT` to `BORROW IN`, `INTEREST OUT` to `BILLS IN`, and `RETURN OUT` to `CASH IN`.
-4. Start the controller. The Income and Expense chests fill with the month’s planned plates; the Debt chest displays copper debt; the Asset Vault displays iron assets; and the Cashflow chest retains any unmatched iron or copper. Verify that the controller label updates monthly and iron/copper emit proportionally through the month.
+4. Start the controller. The Income and Expense chests fill with the month’s planned plates; the Debt chest displays copper debt; the Asset Warehouse displays iron assets; and the Cashflow chest retains any unmatched iron or copper. Verify that the controller label updates monthly and iron/copper emit proportionally through the month.
 
 Iron and copper have no account identity. A plate emitted by any controller can enter another account's station; the receiving account processes it.
 
