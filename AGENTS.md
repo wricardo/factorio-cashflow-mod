@@ -14,9 +14,9 @@ The root browser simulator is separate and shares no code with the mod.
 
 ## Architecture
 
-- **Data stage:** `factorio/cashflow-freeplay/data.lua` declares placeable controller/station prototypes, hidden helper belts, and the licensed Warehouse artwork used by Asset Warehouse.
-- **Runtime stage:** `control.lua` registers entities, links stations to controllers, owns persistent accounts in `storage.cf_freeplay`, validates construction, and drives the monthly simulation.
-- **Station layout:** `script/station_layout.lua` creates hidden helper ports around each placeable station. Asset Warehouse is a 3×3 building with belt ports two tiles from its centre.
+- **Data stage:** `factorio/cashflow-freeplay/data.lua` declares placeable controller/station prototypes and licensed Warehousing art for every station.
+- **Runtime stage:** `control.lua` registers entities, links stations to controllers, owns persistent accounts in `storage.cf_freeplay`, and drives the monthly simulation without restricting vanilla Freeplay content.
+- **Station layout:** `script/station_layout.lua` creates hidden helper ports outside building footprints: Controller, Income, Expense, and Debt are 3×3 Storehouses; Cashflow and Asset Warehouse are 6×6 Warehouses.
 - **Domain boundary:** `script/accounting.lua` has no Factorio API dependency and owns integer-cent money math and month close calculations. Keep Factorio integration in `control.lua`, `stations.lua`, and `pulse.lua`.
 - **Presentation:** `script/labels.lua` renders station/port labels and controller account status. `script/gui.lua` owns configuration UI.
 
@@ -53,4 +53,5 @@ The local machine has no installed Factorio runtime. The fake-Factorio suite is 
 - Player-facing stations are placeable; only helper entities are hidden/locked.
 - Belt traffic is the accounting interface. Do not bypass routing with direct inventory transfers except the existing per-station monthly buffers.
 - Warehouse art is from Warehousing and must retain the notice in `THIRD_PARTY_LICENSES.md` and source comment if copied or changed.
+- Do not restrict vanilla entities, recipes, ghosts, research, or infrastructure; this is normal Freeplay with finance stations.
 - No formatter or linter is configured.

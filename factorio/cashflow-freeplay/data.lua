@@ -12,26 +12,39 @@ end
 
 -- Warehousing artwork by David-John Miller (Anoyomouse), used with permission.
 -- Full MIT notice: THIRD_PARTY_LICENSES.md.
-local warehouse_picture = {
-  layers = {
-    {
-      filename = "__cashflow-freeplay__/graphics/warehouse/warehouse-basic.png",
-      width = 520,
-      height = 480,
-      scale = 0.2,
+local function picture(filename, shadow, width, height, scale, shadow_shift)
+  return {
+    layers = {
+      {
+        filename = "__cashflow-freeplay__/graphics/warehouse/" .. filename,
+        width = width,
+        height = height,
+        scale = scale,
+      },
+      {
+        filename = "__cashflow-freeplay__/graphics/warehouse/" .. shadow,
+        width = width,
+        height = height,
+        shift = shadow_shift,
+        scale = scale,
+        draw_as_shadow = true,
+      },
     },
-    {
-      filename = "__cashflow-freeplay__/graphics/warehouse/warehouse-basic-shadow.png",
-      width = 520,
-      height = 480,
-      shift = { 0.4, 0 },
-      scale = 0.2,
-      draw_as_shadow = true,
-    },
-  },
+  }
+end
+
+local STOREHOUSE = { collision = 1.2, selection = 1.5, scale = 0.4, width = 256, height = 256, shadow = "storehouse-shadow.png", shadow_shift = { 0, 0 } }
+local WAREHOUSE = { collision = 2.7, selection = 3.0, scale = 0.38, width = 520, height = 480, shadow = "warehouse-shadow.png", shadow_shift = { 0.76, 0 } }
+local STATIONS = {
+  controller = { art = "storehouse-basic.png", spec = STOREHOUSE },
+  income = { art = "storehouse-passive-provider.png", spec = STOREHOUSE },
+  expense = { art = "storehouse-requester.png", spec = STOREHOUSE },
+  cashflow = { art = "warehouse-storage.png", spec = WAREHOUSE },
+  debt = { art = "storehouse-active-provider.png", spec = STOREHOUSE },
+  vault = { art = "warehouse-basic.png", spec = WAREHOUSE },
 }
 
-local function anchor(name, source, order)
+local function anchor(name, source, order, role)
   local entity = table.deepcopy(data.raw["container"][source])
   entity.name = name
   entity.minable = { mining_time = 0.2, result = name }
@@ -43,11 +56,10 @@ local function anchor(name, source, order)
   entity.corpse = "small-remnants"
   entity.order = order
   entity.localised_name = { "entity-name." .. name }
-  if name == "cf-freeplay-vault" then
-    entity.picture = warehouse_picture
-    entity.collision_box = { { -1.2, -1.2 }, { 1.2, 1.2 } }
-    entity.selection_box = { { -1.5, -1.5 }, { 1.5, 1.5 } }
-  end
+  local station = STATIONS[role]
+  entity.picture = picture(station.art, station.spec.shadow, station.spec.width, station.spec.height, station.spec.scale, station.spec.shadow_shift)
+  entity.collision_box = { { -station.spec.collision, -station.spec.collision }, { station.spec.collision, station.spec.collision } }
+  entity.selection_box = { { -station.spec.selection, -station.spec.selection }, { station.spec.selection, station.spec.selection } }
 
   local item = table.deepcopy(data.raw.item["iron-chest"])
   item.name = name
@@ -75,7 +87,8 @@ local prototypes = {
 }
 
 for index, role in ipairs({ "controller", "income", "expense", "cashflow", "debt", "vault" }) do
-  local entity, item, recipe = anchor("cf-freeplay-" .. role, role == "vault" and "steel-chest" or "iron-chest", "z[cashflow-freeplay]-" .. index)
+  local source = (role == "cashflow" or role == "vault") and "steel-chest" or "iron-chest"
+  local entity, item, recipe = anchor("cf-freeplay-" .. role, source, "z[cashflow-freeplay]-" .. index, role)
   prototypes[#prototypes + 1] = entity
   prototypes[#prototypes + 1] = item
   prototypes[#prototypes + 1] = recipe

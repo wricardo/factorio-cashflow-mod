@@ -11,6 +11,20 @@ local function title(role)
   if role == "vault" then return "Asset Warehouse" end
   return role:sub(1, 1):upper() .. role:sub(2)
 end
+
+local COLORS = {
+  controller = { 1, 0.85, 0.4 },
+  income = { 0.4, 1, 0.4 },
+  expense = { 1, 0.5, 0.3 },
+  cashflow = { 0.45, 0.8, 1 },
+  debt = { 1, 0.4, 0.35 },
+  vault = { 1, 0.85, 0.4 },
+}
+
+local function label_offset(role)
+  if role == "cashflow" or role == "vault" then return { 0, -3.4 } end
+  return { 0, -1.8 }
+end
 local function port_offset(port)
   if port.x < 0 then return { -0.8, 0 }, "right" end
   if port.x > 0 then return { 0.8, 0 }, "left" end
@@ -31,7 +45,7 @@ function M.machine(machine)
   destroy(machine)
   if machine.anchor.valid then
     local detail = (machine.role == "income" or machine.role == "expense") and "\n" .. acc.money(machine.config.monthly_cents) .. "/month" or ""
-    machine.label = rendering.draw_text { text = title(machine.role) .. detail, surface = machine.anchor.surface, target = machine.anchor, target_offset = { 0, -0.9 }, alignment = "center", color = { 1, 1, 1 } }
+    machine.label = rendering.draw_text { text = title(machine.role) .. detail, surface = machine.anchor.surface, target = machine.anchor, target_offset = label_offset(machine.role), alignment = "center", color = COLORS[machine.role] }
     for _, port in ipairs(layout.roles[machine.role].helpers) do
       local entity = machine.entities[port.key]
       if port.label and entity and entity.valid then
@@ -51,7 +65,7 @@ function M.account(cf)
     local cashflow_text = (cashflow >= 0 and "+" or "") .. acc.money(cashflow)
     cf.label = rendering.draw_text {
       text = cf.name .. " • " .. (cf.running and "Running" or "Paused") .. "\nCashflow " .. cashflow_text .. "/month\nAssets " .. acc.money(assets(cf)) .. " • Debt " .. acc.money(cf.debt_cents),
-      surface = cf.controller.surface, target = cf.controller, target_offset = { 0, -1 }, alignment = "center",
+      surface = cf.controller.surface, target = cf.controller, target_offset = { 0, -2.5 }, alignment = "center",
       color = cf.running and { 0.4, 1, 0.4 } or { 1, 1, 1 },
     }
   end

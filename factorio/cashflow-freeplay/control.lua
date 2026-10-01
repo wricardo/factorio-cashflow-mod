@@ -5,12 +5,11 @@ local pulse = require("script.pulse")
 local layout = require("script.station_layout")
 local labels = require("script.labels")
 local gui = require("script.gui")
-local restrictions = require("script.restrictions")
 local SWEEP_TICKS, REFRESH_TICKS = 2, 30
-local PREFIX, CONSTRUCTION_POLICY = "cf-freeplay-", "logistics-v2"
+local PREFIX, STATION_LAYOUT_VERSION = "cf-freeplay-", 2
 
 local function state()
-  storage.cf_freeplay = storage.cf_freeplay or { schema_version = 1, accounts = {}, machines = {} }
+  storage.cf_freeplay = storage.cf_freeplay or { schema_version = 1, station_layout_version = STATION_LAYOUT_VERSION, accounts = {}, machines = {} }
   return storage.cf_freeplay
 end
 local function role_of(entity)
@@ -138,34 +137,27 @@ local function normalize_layouts()
 end
 
 script.on_init(function()
-  state().construction_policy = CONSTRUCTION_POLICY
+  local s = state()
+  s.station_layout_version = STATION_LAYOUT_VERSION
   normalize_layouts()
-  restrictions.apply_all()
 end)
 script.on_configuration_changed(function()
   local s = state()
-  if s.construction_policy ~= CONSTRUCTION_POLICY then
-    for _, force in pairs(game.forces) do
-      force.reset_recipes()
-      force.reset_technology_effects()
-    end
-    s.construction_policy = CONSTRUCTION_POLICY
+  if s.station_layout_version ~= STATION_LAYOUT_VERSION then
+    s.station_layout_version = STATION_LAYOUT_VERSION
+    game.print("[color=yellow]Cashflow Freeplay station buildings are larger now. Mine and re-place every station before reconnecting its perimeter belt ports.[/color]")
   end
   normalize_layouts()
-  restrictions.apply_all()
 end)
 local build_events = { defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_built, defines.events.script_raised_revive }
 for _, event in ipairs(build_events) do
   script.on_event(event, function(e)
-    local entity = e.created_entity or e.entity
-    if not restrictions.reject(e, entity) then register(entity) end
+    register(e.created_entity or e.entity)
   end)
 end
 script.on_event(defines.events.on_entity_cloned, function(e)
-  if not restrictions.reject(e, e.destination) then register(e.destination) end
+  register(e.destination)
 end)
-script.on_event(defines.events.on_research_finished, function(e) restrictions.apply(e.research.force) end)
-script.on_event(defines.events.on_force_created, function(e) restrictions.apply(e.force) end)
 local remove_events = { defines.events.on_player_mined_entity, defines.events.on_robot_mined_entity, defines.events.on_entity_died, defines.events.script_raised_destroy }
 for _, event in ipairs(remove_events) do script.on_event(event, function(e) remove(e.entity) end) end
 script.on_event(defines.events.on_gui_opened, function(e)

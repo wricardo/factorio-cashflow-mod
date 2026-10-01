@@ -6,31 +6,22 @@
 npm run package:factorio
 ```
 
-Copy `factorio/dist/cashflow-freeplay_0.2.14.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
-## Construction policy
+Copy `factorio/dist/cashflow-freeplay_0.2.15.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+## Unrestricted Freeplay
 
-Enabled vanilla entities:
+Cashflow Freeplay does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
 
-- Cashflow Controller, Income, Expense, Cashflow, Debt, and Asset Vault.
-- Transport belts, underground belts, splitters, and inserters.
-- Wooden, iron, steel, and logistic chests.
-- Small, medium, and big electric poles, substations, and the Electric Energy Interface.
-- Roboports, construction robots, and logistic robots, so approved ghosts can be built automatically.
+## Building visual upgrade
 
-Disabled vanilla categories:
+Version `0.2.15` makes every Cashflow station a Warehousing-derived building. Existing compact stations must be mined and re-placed before reconnecting their perimeter belt ports:
 
-- Assemblers, furnaces, miners, labs, beacons, radars, and other production/research machines.
-- Steam, solar, nuclear, and other power-generation entities.
-- Combat, vehicles, equipment, rails, trains, and other unrelated infrastructure.
-
-Ghosts follow the same policy: approved logistics/robot infrastructure ghosts survive and can be revived; disabled-category ghosts are removed. Recipes for disabled placeable entities are disabled, while researched technology still controls approved recipes.
-
-Upgrading from `0.2.8` restores recipe defaults, reapplies researched technology effects, and then reapplies this policy once.
+- Controller, Income, Expense, and Debt are 3×3 Storehouses.
+- Cashflow and Asset Warehouse are 6×6 Warehouses.
 
 
 ## One account
 
-1. Craft and place one Cashflow Controller, Income Station, Expense Station, Cashflow Station, Debt Station, and Asset Warehouse. The Asset Warehouse is a 3×3 Warehouse building with `DEPOSIT IN` and `RETURN OUT` ports two tiles from its centre.
+1. Craft and place one Cashflow Controller, Income Station, Expense Station, Cashflow Station, Debt Station, and Asset Warehouse. Leave clear space around each building: Storehouse ports are two tiles from centre; Warehouse ports are four tiles from centre.
 2. Open each station and select the controller. Cashflow, Debt, and Asset Warehouse are required before Start; Income and Expense are optional. Configure them while the controller is paused; fields are locked while it runs. Set Income to `$5,000`, Expense to `$2,000` with `Needs`, and set the controller's debt APR and asset return.
 3. Every helper belt has a colored port label. Green labels are outputs; orange labels are inputs. Route `IRON OUT` to `CASH IN`, `COPPER OUT` to `BILLS IN`, `SURPLUS OUT` to `DEPOSIT IN`, `UNPAID OUT` to `BORROW IN`, `INTEREST OUT` to `BILLS IN`, and `RETURN OUT` to `CASH IN`.
 4. Start the controller. The Income and Expense chests fill with the month’s planned plates; the Debt chest displays copper debt; the Asset Warehouse displays iron assets; and the Cashflow chest retains any unmatched iron or copper. Verify that the controller label updates monthly and iron/copper emit proportionally through the month.

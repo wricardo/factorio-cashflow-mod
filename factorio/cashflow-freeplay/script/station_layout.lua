@@ -1,20 +1,20 @@
--- Anchor-relative helpers. Ports are ordinary hidden belts; players connect ordinary belts to them.
+-- Anchor-relative helper belts sit outside each station's building footprint.
 local M = {}
 
 M.roles = {
-  controller = { helpers = { { key = "landmark", name = "cf-freeplay-landmark", x = 1, y = 0 } } },
-  income = { helpers = { { key = "out", name = "cf-freeplay-belt", x = 1, y = 0, label = "IRON OUT", output = true } }, ports = { "out" } },
-  expense = { helpers = { { key = "out", name = "cf-freeplay-belt", x = 1, y = 0, label = "COPPER OUT", output = true } }, ports = { "out" } },
+  controller = { helpers = { { key = "landmark", name = "cf-freeplay-landmark", x = 2, y = 0 } } },
+  income = { helpers = { { key = "out", name = "cf-freeplay-belt", x = 2, y = 0, label = "IRON OUT", output = true } }, ports = { "out" } },
+  expense = { helpers = { { key = "out", name = "cf-freeplay-belt", x = 2, y = 0, label = "COPPER OUT", output = true } }, ports = { "out" } },
   cashflow = { helpers = {
-    { key = "cash_in", name = "cf-freeplay-belt", x = -1, y = -1, label = "CASH IN", output = false }, { key = "bills_in", name = "cf-freeplay-belt", x = -1, y = 1, label = "BILLS IN", output = false },
-    { key = "surplus_out", name = "cf-freeplay-belt", x = 1, y = -1, label = "SURPLUS OUT", output = true }, { key = "unpaid_out", name = "cf-freeplay-belt", x = 1, y = 1, label = "UNPAID OUT", output = true },
+    { key = "cash_in", name = "cf-freeplay-belt", x = -4, y = -2, label = "CASH IN", output = false }, { key = "bills_in", name = "cf-freeplay-belt", x = -4, y = 2, label = "BILLS IN", output = false },
+    { key = "surplus_out", name = "cf-freeplay-belt", x = 4, y = -2, label = "SURPLUS OUT", output = true }, { key = "unpaid_out", name = "cf-freeplay-belt", x = 4, y = 2, label = "UNPAID OUT", output = true },
   }, ports = { "cash_in", "bills_in", "surplus_out", "unpaid_out" } },
   debt = { helpers = {
-    { key = "borrow_in", name = "cf-freeplay-belt", x = -1, y = -1, label = "BORROW IN", output = false }, { key = "pay_in", name = "cf-freeplay-belt", x = -1, y = 1, label = "PAY IN", output = false },
-    { key = "interest_out", name = "cf-freeplay-belt", x = 1, y = 0, label = "INTEREST OUT", output = true },
+    { key = "borrow_in", name = "cf-freeplay-belt", x = -2, y = -1, label = "BORROW IN", output = false }, { key = "pay_in", name = "cf-freeplay-belt", x = -2, y = 1, label = "PAY IN", output = false },
+    { key = "interest_out", name = "cf-freeplay-belt", x = 2, y = 0, label = "INTEREST OUT", output = true },
   }, ports = { "borrow_in", "pay_in", "interest_out" } },
   vault = { helpers = {
-    { key = "deposit_in", name = "cf-freeplay-belt", x = -2, y = 0, label = "DEPOSIT IN", output = false }, { key = "return_out", name = "cf-freeplay-belt", x = 2, y = 0, label = "RETURN OUT", output = true },
+    { key = "deposit_in", name = "cf-freeplay-belt", x = -4, y = 0, label = "DEPOSIT IN", output = false }, { key = "return_out", name = "cf-freeplay-belt", x = 4, y = 0, label = "RETURN OUT", output = true },
   }, ports = { "deposit_in", "return_out" } },
 }
 

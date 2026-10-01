@@ -161,35 +161,17 @@ function T.account_and_port_labels_show_balances_without_station_account_names()
   eq(machine.port_labels.cash_in.alignment, "right")
   eq(machine.port_labels.surplus_out.alignment, "left")
 end
-function T.sandbox_allows_robot_infrastructure_and_rejects_production()
+function T.freeplay_allows_normal_buildings_and_items()
   local h, player = setup()
-  local ghost = { valid = true, name = "entity-ghost", ghost_name = "roboport" }
+  local ghost = { valid = true, name = "entity-ghost", ghost_name = "assembling-machine-1" }
   function ghost.destroy() ghost.valid = false end
   h.fire("on_built_entity", { player_index = player.index, entity = ghost })
   eq(ghost.valid, true)
-  local roboport = h.build("roboport", player)
-  eq(roboport.valid, true)
-  local assembler = h.build("assembling-machine-1", player)
-  eq(assembler.valid, false)
-  eq(player.inventory.get_item_count("assembling-machine-1"), 1)
+  eq(h.build("assembling-machine-1", player).valid, true)
+  eq(h.build("roboport", player).valid, true)
   eq(h.build("electric-energy-interface", player).valid, true)
   local income = h.build_robot("cf-freeplay-income")
   eq(storage.cf_freeplay.machines[income.unit_number].role, "income")
-end
-function T.recipe_policy_migration_restores_allowed_logistic_chests_once()
-  local h = setup()
-  storage.cf_freeplay.construction_policy = "logistics-only"
-  local force = game.forces.player
-  local calls = 0
-  force.recipes["logistic-chest-requester"] = { enabled = false }
-  force.recipes.locked = { enabled = false }
-  function force.reset_recipes() calls = calls + 1; force.recipes["logistic-chest-requester"].enabled = false end
-  function force.reset_technology_effects() force.recipes["logistic-chest-requester"].enabled = true end
-  h.configuration_changed({})
-  eq(force.recipes["logistic-chest-requester"].enabled, true)
-  eq(force.recipes.locked.enabled, false)
-  h.configuration_changed({})
-  eq(calls, 1)
 end
 function T.required_station_removal_pauses_the_account()
   local h, player = setup()
@@ -277,12 +259,32 @@ function T.copper_on_pay_in_does_not_increase_debt()
   eq(cf.debt_cents, 1800000)
 end
 
-function T.asset_warehouse_has_clear_belt_ports_and_label()
+function T.station_buildings_keep_every_port_outside_its_footprint()
   local h, player = setup()
-  local vault = h.build("cf-freeplay-vault", player, { x = 10, y = 10 })
-  local machine = storage.cf_freeplay.machines[vault.unit_number]
-  eq(machine.label.text, "Asset Warehouse")
-  eq(machine.entities.deposit_in.position.x, 8)
-  eq(machine.entities.return_out.position.x, 12)
+  local income = h.build("cf-freeplay-income", player, { x = 10, y = 10 })
+  local cashflow = h.build("cf-freeplay-cashflow", player, { x = 30, y = 30 })
+  local debt = h.build("cf-freeplay-debt", player, { x = 50, y = 50 })
+  local vault = h.build("cf-freeplay-vault", player, { x = 70, y = 70 })
+  eq(storage.cf_freeplay.machines[income.unit_number].entities.out.position.x, 12)
+  local cashflow_ports = storage.cf_freeplay.machines[cashflow.unit_number].entities
+  eq(cashflow_ports.cash_in.position.x, 26)
+  eq(cashflow_ports.cash_in.position.y, 28)
+  eq(cashflow_ports.unpaid_out.position.x, 34)
+  eq(cashflow_ports.unpaid_out.position.y, 32)
+  local debt_ports = storage.cf_freeplay.machines[debt.unit_number].entities
+  eq(debt_ports.borrow_in.position.x, 48)
+  eq(debt_ports.interest_out.position.x, 52)
+  local warehouse = storage.cf_freeplay.machines[vault.unit_number]
+  eq(warehouse.label.text, "Asset Warehouse")
+  eq(warehouse.entities.deposit_in.position.x, 66)
+  eq(warehouse.entities.return_out.position.x, 74)
+end
+
+function T.station_building_upgrade_notifies_existing_saves()
+  local h = setup()
+  storage.cf_freeplay.station_layout_version = 1
+  h.configuration_changed({})
+  eq(storage.cf_freeplay.station_layout_version, 2)
+  assert(h.logs[#h.logs]:match("Mine and re%-place every station"), "migration notice")
 end
 return T
