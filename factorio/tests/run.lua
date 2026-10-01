@@ -1,7 +1,10 @@
 local here = (arg and arg[0] or ""):match("(.*/)") or "./"
-package.path = here .. "../cashflow/?.lua;" .. here .. "?.lua;" .. package.path
+local source = arg[1] or "factorio/cashflow"
+package.path = source .. "/?.lua;" .. here .. "?.lua;" .. package.path
 
-local files = { "accounting_test", "smoke_test" }
+local files = {}
+for i = 2, #arg do files[#files + 1] = arg[i] end
+if #files == 0 then files = { "accounting_test", "smoke_test" } end
 local passed, failed = 0, 0
 
 for _, file in ipairs(files) do

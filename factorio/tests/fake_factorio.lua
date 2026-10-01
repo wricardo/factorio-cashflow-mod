@@ -1,253 +1,104 @@
--- Minimal stand-in for the Factorio runtime API, enough to load control.lua and run months.
+-- Minimal stand-in for the Factorio runtime API, enough to load both mods and run months.
+local host_require = require
 local F = {}
-
 local function new_inventory()
   local inv = { items = {} }
-  function inv.get_item_count(name)
-    return inv.items[name] or 0
-  end
-  function inv.insert(stack)
-    inv.items[stack.name] = (inv.items[stack.name] or 0) + stack.count
-    return stack.count
-  end
-  function inv.remove(stack)
-    local have = inv.items[stack.name] or 0
-    local n = math.min(have, stack.count)
-    inv.items[stack.name] = have - n
-    return n
-  end
-  function inv.get_insertable_count()
-    return 1000000
-  end
+  function inv.get_item_count(name) return inv.items[name] or 0 end
+  function inv.insert(stack) if stack.count <= 0 then error("count must be positive") end; inv.items[stack.name] = (inv.items[stack.name] or 0) + stack.count; return stack.count end
+  function inv.remove(stack) if stack.count <= 0 then error("count must be positive") end; local n = math.min(inv.items[stack.name] or 0, stack.count); inv.items[stack.name] = (inv.items[stack.name] or 0) - n; return n end
+  function inv.get_insertable_count() return 1000000 end
   return inv
 end
-
--- A belt lane that holds up to `cap` items in total.
 local function new_line(cap)
   local line = { items = {}, cap = cap }
-  local function total()
-    local n = 0
-    for _, c in pairs(line.items) do
-      n = n + c
-    end
-    return n
-  end
-  function line.put(name, n)
-    line.items[name] = (line.items[name] or 0) + n
-  end
   function line.insert_at_back(stack)
-    if total() < line.cap then
-      line.put(stack.name, 1)
-      return true
-    end
-    return false
+    if (line.items[stack.name] or 0) >= line.cap then return false end
+    line.items[stack.name] = (line.items[stack.name] or 0) + stack.count
+    return true
   end
-  function line.remove_item(stack)
-    local have = line.items[stack.name] or 0
-    local n = math.min(have, stack.count)
-    line.items[stack.name] = have - n
-    return n
-  end
-  function line.get_item_count(name)
-    return line.items[name] or 0
-  end
-  function line.get_detailed_contents()
-    return {}
-  end
+  function line.remove_item(stack) local n = math.min(line.items[stack.name] or 0, stack.count); line.items[stack.name] = (line.items[stack.name] or 0) - n; return n end
+  function line.put(name, count) line.items[name] = (line.items[name] or 0) + count end
+  function line.get_item_count(name) return line.items[name] or 0 end
   return line
 end
-
 local next_unit = 1
-
 local function new_entity(surface, spec)
-  local e = {
-    name = spec.name,
-    position = spec.position,
-    direction = spec.direction,
-    surface = surface,
-    valid = true,
-    unit_number = next_unit,
-  }
+  local e = { name = spec.name, position = spec.position or { x = 0, y = 0 }, direction = spec.direction or 2, surface = surface, force = spec.force or { index = 1 }, valid = true, unit_number = next_unit, minable = true, operable = true, rotatable = true }
   next_unit = next_unit + 1
-  local lines = { new_line(4), new_line(4) }
-  local inv = new_inventory()
-  function e.get_transport_line(i)
-    return lines[i]
-  end
-  function e.get_inventory()
-    return inv
-  end
+  local lines, inv = { new_line(4), new_line(4) }, new_inventory()
+  function e.get_transport_line(i) return lines[i] end
+  function e.get_inventory() return inv end
+  function e.destroy() e.valid = false end
   surface.entities[#surface.entities + 1] = e
   return e
 end
-
-local function new_surface(name)
-  local s = { name = name, entities = {} }
+local function new_surface(name, index)
+  local s = { name = name, index = index, entities = {}, spilled = {} }
   function s.request_to_generate_chunks() end
   function s.force_generate_chunk_requests() end
   function s.set_tiles() end
   function s.destroy_decoratives() end
-  function s.find_entities_filtered()
-    return {}
-  end
-  function s.find_non_colliding_position(_, pos)
-    return pos
-  end
-  function s.create_entity(spec)
-    return new_entity(s, spec)
-  end
+  function s.find_entities_filtered() return {} end
+  function s.find_non_colliding_position(_, pos) return pos end
+  function s.create_entity(spec) return new_entity(s, spec) end
+  function s.spill_item_stack(_, stack) s.spilled[#s.spilled + 1] = stack end
   return s
 end
-
 local function new_gui_element(spec)
-  local el = { type = spec.type, name = spec.name, caption = spec.caption, value = spec.value, visible = spec.visible ~= false }
+  local el = { type = spec.type, name = spec.name, caption = spec.caption, text = spec.text, value = spec.value, tags = spec.tags, selected_index = spec.selected_index, items = spec.items, enabled = spec.enabled ~= false, visible = spec.visible ~= false, valid = true }
   el.children = {}
   function el.add(child_spec)
+    if child_spec.name == "name" then error("LuaGuiElement contains a property or method with the same name.") end
     local child = new_gui_element(child_spec)
     child.parent = el
     el.children[#el.children + 1] = child
-    if child_spec.name then
-      el[child_spec.name] = child
-    end
+    if child.name then el[child.name] = child end
     return child
   end
-  function el.destroy()
-    if el.parent and el.name then
-      el.parent[el.name] = nil
-    end
-  end
+  function el.destroy() el.valid = false; if el.parent and el.name then el.parent[el.name] = nil end end
   return el
 end
-
-function F.new_player(index)
-  local p = { index = index, prints = {}, inventory = new_inventory() }
+function F.new_player(index, surface)
+  local p = { index = index, valid = true, prints = {}, inventory = new_inventory(), surface = surface, position = { x = 0, y = 0 }, force = { index = 1 } }
   p.gui = { left = new_gui_element({ type = "flow" }) }
-  function p.get_main_inventory()
-    return p.inventory
-  end
-  function p.teleport(pos, surface)
-    p.position, p.surface = pos, surface
-  end
-  function p.print(msg)
-    p.prints[#p.prints + 1] = msg
-  end
+  function p.get_main_inventory() return p.inventory end
+  function p.teleport(pos, target) p.position, p.surface = pos, target end
+  function p.print(msg) p.prints[#p.prints + 1] = msg end
   return p
 end
-
-local default_settings = {
-  ["cf-job-income"] = 5000,
-  ["cf-needs"] = 2000,
-  ["cf-wants"] = 800,
-  ["cf-starting-debt"] = 18000,
-  ["cf-debt-apr"] = 18,
-  ["cf-starting-assets"] = 12000,
-  ["cf-asset-return"] = 7,
-  ["cf-game-speed"] = 1,
-}
-
--- Installs globals and returns a handle for driving events.
+local default_settings = { ["cf-job-income"] = 5000, ["cf-needs"] = 2000, ["cf-wants"] = 800, ["cf-starting-debt"] = 18000, ["cf-debt-apr"] = 18, ["cf-starting-assets"] = 12000, ["cf-asset-return"] = 7, ["cf-game-speed"] = 1 }
 function F.install(opts)
-  opts = opts or {}
-  local h = { events = {}, nth = {}, logs = {}, tick = 0 }
-  local event_ids = {}
-  local names = {
-    "on_player_created", "on_chunk_generated", "on_gui_click", "on_runtime_mod_setting_changed",
-    "on_player_main_inventory_changed", "on_built_entity", "on_player_mined_entity", "on_robot_mined_entity",
+  opts = opts or {}; local h = { events = {}, nth = {}, logs = {}, tick = 0 }; local event_ids = {}
+  local names = { "on_player_created", "on_chunk_generated", "on_gui_click", "on_runtime_mod_setting_changed", "on_player_main_inventory_changed", "on_built_entity", "on_player_mined_entity", "on_robot_mined_entity", "on_robot_built_entity", "on_entity_died", "script_raised_built", "script_raised_revive", "script_raised_destroy", "on_entity_cloned", "on_research_finished", "on_force_created", "on_gui_opened", "on_gui_confirmed", "on_gui_text_changed", "on_gui_selection_state_changed" }
+  for i, name in ipairs(names) do event_ids[name] = i end
+  _G.defines = { events = event_ids, direction = { north = 0, east = 4, south = 8, west = 12 }, inventory = { chest = 1 } }
+  local g = {}; for k, v in pairs(default_settings) do g[k] = { value = (opts.settings and opts.settings[k]) or v } end; _G.settings = { global = g }
+  _G.storage = opts.storage or {}
+  _G.remote = {
+    interfaces = {},
+    add_interface = function(name, functions) _G.remote.interfaces[name] = functions end,
+    call = function(name, function_name, ...) return _G.remote.interfaces[name][function_name](...) end,
   }
-  for i, name in ipairs(names) do
-    event_ids[name] = i
-  end
-
-  _G.defines = {
-    events = event_ids,
-    direction = { north = 0, east = 4, south = 8, west = 12 },
-    inventory = { chest = 1 },
-  }
-
-  local g = {}
-  for k, v in pairs(default_settings) do
-    g[k] = { value = (opts.settings and opts.settings[k]) or v }
-  end
-  _G.settings = { global = g }
-
-  _G.storage = {}
-
-  _G.script = {
-    level = opts.level or { mod_name = "cashflow", level_name = "cashflow" },
-    on_init = function(fn)
-      h.init = fn
-    end,
-    on_event = function(id, fn)
-      h.events[id] = fn
-    end,
-    on_nth_tick = function(n, fn)
-      h.nth[n] = fn
-    end,
-  }
-
-  local surfaces = { nauvis = new_surface("nauvis") }
-  _G.game = {
-    surfaces = surfaces,
-    players = {},
-    speed = 1,
-    create_surface = function(name)
-      surfaces[name] = new_surface(name)
-      return surfaces[name]
-    end,
-    get_player = function(i)
-      return _G.game.players[i]
-    end,
-    print = function(msg)
-      h.logs[#h.logs + 1] = msg
-    end,
-  }
-
-  _G.rendering = {
-    draw_text = function(spec)
-      local obj = { text = spec.text, valid = true }
-      function obj.destroy()
-        obj.valid = false
-      end
-      return obj
-    end,
-  }
-
-  _G.log = function(msg)
-    h.logs[#h.logs + 1] = msg
-  end
-
-  for name in pairs(package.loaded) do
-    if name == "control" or name:match("^script%.") then
-      package.loaded[name] = nil
-    end
-  end
-  require("control")
-
-  function h.fire(name, event)
-    event = event or {}
-    event.name = event_ids[name]
-    h.events[event_ids[name]](event)
-  end
-
-  function h.add_player()
-    local p = F.new_player(#_G.game.players + 1)
-    _G.game.players[p.index] = p
-    h.fire("on_player_created", { player_index = p.index })
-    return p
-  end
-
-  function h.run_ticks(n)
-    for _ = 1, n do
-      h.tick = h.tick + 1
-      for every, fn in pairs(h.nth) do
-        if h.tick % every == 0 then
-          fn({ tick = h.tick })
-        end
-      end
-    end
-  end
-
+  _G.script = { level = opts.level or { mod_name = "cashflow", level_name = "cashflow" }, on_init = function(fn) h.init = fn end, on_configuration_changed = function(fn) h.configuration_changed = fn end, on_event = function(id, fn) h.events[id] = fn end, on_nth_tick = function(n, fn) h.nth[n] = fn end }
+  local surfaces = { nauvis = new_surface("nauvis", 1) }
+  _G.game = { surfaces = surfaces, players = {}, forces = { player = { recipes = {} } }, speed = 1, create_surface = function(name) local s = new_surface(name, #surfaces + 1); surfaces[name] = s; return s end, get_player = function(i) return _G.game.players[i] end, print = function(msg) h.logs[#h.logs + 1] = msg end }
+  _G.prototypes = { item = {} }
+  _G.rendering = { draw_text = function(spec) local obj = { text = spec.text, target_offset = spec.target_offset, alignment = spec.alignment, valid = true }; function obj.destroy() obj.valid = false end; return obj end }
+  _G.log = function(msg) h.logs[#h.logs + 1] = msg end
+  for name in pairs(package.loaded) do if name == "control" or name:match("^script%.") then package.loaded[name] = nil end end
+  _G.require = host_require
+  host_require("control")
+  _G.require = function() error("Require can't be used outside of control.lua parsing.") end
+  function h.fire(name, event) event = event or {}; event.name = event_ids[name]; local fn = h.events[event_ids[name]]; if fn then fn(event) end end
+  function h.add_player() local p = F.new_player(#_G.game.players + 1, surfaces.nauvis); _G.game.players[p.index] = p; h.fire("on_player_created", { player_index = p.index }); return p end
+  function h.build(name, player, position) local e = new_entity(surfaces.nauvis, { name = name, position = position, force = player.force }); h.fire("on_built_entity", { player_index = player.index, entity = e }); return e end
+  function h.build_robot(name, position) local e = new_entity(surfaces.nauvis, { name = name, position = position }); h.fire("on_robot_built_entity", { entity = e }); return e end
+  function h.mine(entity, player) entity.valid = false; h.fire("on_player_mined_entity", { player_index = player.index, entity = entity }) end
+  function h.open(player, entity) h.fire("on_gui_opened", { player_index = player.index, entity = entity }) end
+  function h.confirm(player, element) h.fire("on_gui_confirmed", { player_index = player.index, element = element }) end
+  function h.text(player, element, text) element.text = text; h.fire("on_gui_text_changed", { player_index = player.index, element = element }) end
+  function h.select(player, element, index) element.selected_index = index; h.fire("on_gui_selection_state_changed", { player_index = player.index, element = element }) end
+  function h.run_ticks(n) for _ = 1, n do h.tick = h.tick + 1; for every, fn in pairs(h.nth) do if h.tick % every == 0 then fn({ tick = h.tick }) end end end end
   return h
 end
-
 return F
