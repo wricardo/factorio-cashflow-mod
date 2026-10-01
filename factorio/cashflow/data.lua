@@ -29,6 +29,7 @@ data:extend({
   locked_copy("container", "iron-chest", "cf-landmark", { inventory_size = 1 }),
   locked_copy("container", "iron-chest", "cf-ledger", { inventory_size = 1000 }),
   locked_copy("container", "steel-chest", "cf-vault", { inventory_size = 2000 }),
+  locked_copy("container", "steel-chest", "cf-facade", { inventory_size = 1, operable = false }),
   meter,
   meter_item,
 })

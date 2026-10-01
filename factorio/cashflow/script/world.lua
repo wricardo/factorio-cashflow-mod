@@ -35,6 +35,12 @@ local function chest(surface, name, tx, ty)
   return place(surface, name, tx + 0.5, ty + 0.5)
 end
 
+local function facade_span(surface, tx, ty, length)
+  for x = tx, tx + length - 1 do
+    chest(surface, "cf-facade", x, ty)
+  end
+end
+
 local function add_tile(tiles, name, x, y)
   tiles[#tiles + 1] = { name = name, position = { x = x, y = y } }
 end
@@ -107,7 +113,7 @@ end
 
 function builders.cashflow(surface, s)
   local x, y = s.x, s.y
-  return {
+  local station = {
     cash_in = sink(surface, x, y),
     bills_in = sink(surface, x, y + 2),
     landmark = chest(surface, "cf-landmark", x + 3, y + 1),
@@ -120,12 +126,15 @@ function builders.cashflow(surface, s)
       { x + 7, y + 2, "UNPAID OUT >" },
     },
   }
+  facade_span(surface, x, y + 1, 3)
+  facade_span(surface, x + 4, y + 1, 4)
+  return station
 end
 
 function builders.debt(surface, s)
   local x, y = s.x, s.y
   local pay_in, splitter = sink_with_pass(surface, x, y + 2)
-  return {
+  local station = {
     borrow_in = sink(surface, x, y),
     landmark = chest(surface, "cf-ledger", x + 3, y),
     interest_out = source(surface, x + 4, y),
@@ -138,6 +147,8 @@ function builders.debt(surface, s)
       { x + 5, y + 2, "PASS OUT >" },
     },
   }
+  facade_span(surface, x, y - 1, 8)
+  return station
 end
 
 function builders.vault(surface, s)
@@ -149,6 +160,8 @@ function builders.vault(surface, s)
   }
   vault.chest = chest(surface, "cf-vault", x + 3, y)
   vault.landmark = vault.chest
+  facade_span(surface, x, y - 1, 8)
+  facade_span(surface, x, y + 1, 8)
   return vault
 end
 

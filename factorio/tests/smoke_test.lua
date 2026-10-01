@@ -40,6 +40,16 @@ local function tile_count(surface, name)
   return count
 end
 
+local function entity_count(surface, name)
+  local count = 0
+  for _, entity in ipairs(surface.entities) do
+    if entity.name == name then
+      count = count + 1
+    end
+  end
+  return count
+end
+
 local T = {}
 
 function T.inert_outside_scenario()
@@ -67,9 +77,11 @@ function T.financial_district_has_marked_lanes_and_live_ledger()
   assert(tile_count(surface, "refined-concrete") > 0, "ledger and vault pads")
   assert(tile_count(surface, "hazard-concrete-left") > 0, "liability lane")
   eq(#h.frames, 6, "one station frame per financial station")
+  eq(entity_count(surface, "cf-facade"), 31, "processing facades and warehouse enclosure")
   eq(cf.labels.ledger_title.text, "FINANCIAL LEDGER")
   assert(cf.labels.ledger_status.text:match("^MONTH 1  READY"), "ledger starts ready for month one")
   assert(cf.labels.ledger_balances.text:match("DEBT %$18,000"), "ledger displays debt balance")
+  assert(cf.labels.vault.text:match("^ASSET WAREHOUSE"), "warehouse label")
 end
 
 function T.clock_paused_until_start()
