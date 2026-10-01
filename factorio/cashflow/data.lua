@@ -23,6 +23,27 @@ meter_item.place_result = "cf-meter-belt"
 meter_item.stack_size = 10
 meter_item.order = "a[transport-belt]-z[cf-meter-belt]"
 
+-- Warehousing artwork by David-John Miller (Anoyomouse), used with permission.
+-- Full MIT notice: THIRD_PARTY_LICENSES.md.
+local warehouse_picture = {
+  layers = {
+    {
+      filename = "__cashflow__/graphics/warehouse/warehouse-basic.png",
+      width = 520,
+      height = 480,
+      scale = 0.5,
+    },
+    {
+      filename = "__cashflow__/graphics/warehouse/warehouse-basic-shadow.png",
+      width = 520,
+      height = 480,
+      shift = { 1, 0 },
+      scale = 0.5,
+      draw_as_shadow = true,
+    },
+  },
+}
+
 data:extend({
   locked_copy("transport-belt", "transport-belt", "cf-belt"),
   locked_copy("splitter", "splitter", "cf-splitter"),
@@ -30,6 +51,7 @@ data:extend({
   locked_copy("container", "iron-chest", "cf-ledger", { inventory_size = 1000 }),
   locked_copy("container", "steel-chest", "cf-vault", { inventory_size = 2000 }),
   locked_copy("container", "steel-chest", "cf-facade", { inventory_size = 1, operable = false }),
+  locked_copy("container", "steel-chest", "cf-warehouse-facade", { inventory_size = 1, operable = false, picture = warehouse_picture }),
   meter,
   meter_item,
 })

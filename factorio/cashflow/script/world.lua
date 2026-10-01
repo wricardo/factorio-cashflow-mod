@@ -159,7 +159,9 @@ function builders.vault(surface, s)
     ports = { { x, y, "DEPOSIT IN >" }, { x + 7, y, "RETURNS OUT >" } },
   }
   vault.chest = chest(surface, "cf-vault", x + 3, y)
-  vault.landmark = vault.chest
+  -- Keep the real vault beside the belt. The large licensed facade sits beyond
+  -- the output port, leaving every prebuilt belt cell unobstructed.
+  vault.landmark = chest(surface, "cf-warehouse-facade", x + 11, y)
   facade_span(surface, x, y - 1, 8)
   facade_span(surface, x, y + 1, 8)
   return vault
