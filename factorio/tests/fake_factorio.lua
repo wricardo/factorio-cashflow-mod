@@ -33,10 +33,10 @@ local function new_entity(surface, spec)
   return e
 end
 local function new_surface(name, index)
-  local s = { name = name, index = index, entities = {}, spilled = {} }
+  local s = { name = name, index = index, entities = {}, spilled = {}, tiles = {} }
   function s.request_to_generate_chunks() end
   function s.force_generate_chunk_requests() end
-  function s.set_tiles() end
+  function s.set_tiles(tiles) s.tiles = tiles end
   function s.destroy_decoratives() end
   function s.find_entities_filtered() return {} end
   function s.find_non_colliding_position(_, pos) return pos end
@@ -83,7 +83,11 @@ function F.install(opts)
   local surfaces = { nauvis = new_surface("nauvis", 1) }
   _G.game = { surfaces = surfaces, players = {}, forces = { player = { recipes = {} } }, speed = 1, create_surface = function(name) local s = new_surface(name, #surfaces + 1); surfaces[name] = s; return s end, get_player = function(i) return _G.game.players[i] end, print = function(msg) h.logs[#h.logs + 1] = msg end }
   _G.prototypes = { item = {} }
-  _G.rendering = { draw_text = function(spec) local obj = { text = spec.text, target_offset = spec.target_offset, alignment = spec.alignment, valid = true }; function obj.destroy() obj.valid = false end; return obj end }
+  h.frames = {}
+  _G.rendering = {
+    draw_text = function(spec) local obj = { text = spec.text, target_offset = spec.target_offset, alignment = spec.alignment, valid = true }; function obj.destroy() obj.valid = false end; return obj end,
+    draw_rectangle = function(spec) h.frames[#h.frames + 1] = spec; local obj = { valid = true }; function obj.destroy() obj.valid = false end; return obj end,
+  }
   _G.log = function(msg) h.logs[#h.logs + 1] = msg end
   for name in pairs(package.loaded) do if name == "control" or name:match("^script%.") then package.loaded[name] = nil end end
   _G.require = host_require

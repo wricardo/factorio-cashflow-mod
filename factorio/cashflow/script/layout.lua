@@ -1,5 +1,8 @@
 -- Top-left tile of each station. Every station flows east.
 return {
+  -- The ledger stays in the open centre of the campus so players can read it
+  -- while following the belts between stations.
+  ledger = { x = -23, y = 12 },
   surface = "cashflow",
   spawn = { x = -30, y = 0 },
   stations = {

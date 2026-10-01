@@ -30,6 +30,16 @@ local function ledger(cf)
   return cf.entities.debt.landmark.get_inventory().get_item_count("copper-plate")
 end
 
+local function tile_count(surface, name)
+  local count = 0
+  for _, tile in ipairs(surface.tiles) do
+    if tile.name == name then
+      count = count + 1
+    end
+  end
+  return count
+end
+
 local T = {}
 
 function T.inert_outside_scenario()
@@ -48,6 +58,18 @@ function T.setup_seeds_vault_ledger_and_player()
   eq(player.inventory.get_item_count("transport-belt"), 400)
   eq(player.inventory.get_item_count("cf-meter-belt"), 1)
   eq(player.surface.name, "cashflow")
+end
+
+function T.financial_district_has_marked_lanes_and_live_ledger()
+  local h, cf = start()
+  local surface = game.surfaces.cashflow
+  assert(tile_count(surface, "concrete") > 2000, "campus concrete pad")
+  assert(tile_count(surface, "refined-concrete") > 0, "ledger and vault pads")
+  assert(tile_count(surface, "hazard-concrete-left") > 0, "liability lane")
+  eq(#h.frames, 6, "one station frame per financial station")
+  eq(cf.labels.ledger_title.text, "FINANCIAL LEDGER")
+  assert(cf.labels.ledger_status.text:match("^MONTH 1  READY"), "ledger starts ready for month one")
+  assert(cf.labels.ledger_balances.text:match("DEBT %$18,000"), "ledger displays debt balance")
 end
 
 function T.clock_paused_until_start()

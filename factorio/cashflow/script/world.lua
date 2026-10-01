@@ -35,6 +35,37 @@ local function chest(surface, name, tx, ty)
   return place(surface, name, tx + 0.5, ty + 0.5)
 end
 
+local function add_tile(tiles, name, x, y)
+  tiles[#tiles + 1] = { name = name, position = { x = x, y = y } }
+end
+
+local function fill(tiles, name, left, top, right, bottom)
+  for x = left, right do
+    for y = top, bottom do
+      add_tile(tiles, name, x, y)
+    end
+  end
+end
+
+local function hazard_lane(tiles, left, right, y)
+  for x = left, right do
+    local name = ((x - left) % 2 == 0) and "hazard-concrete-left" or "hazard-concrete-right"
+    add_tile(tiles, name, x, y)
+  end
+end
+
+-- Vanilla concrete keeps the financial district readable without shipping third-party art.
+-- Hazard lanes mark liabilities; refined pads mark durable assets and the central ledger.
+local function decorate_financial_district(surface)
+  local tiles = {}
+  fill(tiles, "concrete", -52, -18, 14, 18)
+  fill(tiles, "refined-concrete", -31, 9, -15, 17)
+  hazard_lane(tiles, -46, -18, -4)
+  hazard_lane(tiles, -46, -18, 4)
+  hazard_lane(tiles, 0, 7, -14)
+  surface.set_tiles(tiles, true, false, false)
+end
+
 -- Three belts ending at (tx+2, ty). The script removes plates from the last one.
 local function sink(surface, tx, ty)
   belt(surface, tx, ty)
@@ -127,6 +158,7 @@ function M.create_surface()
   surface.request_to_generate_chunks({ 0, 0 }, 3)
   surface.force_generate_chunk_requests()
   M.clean_area(surface, { left_top = { x = -96, y = -96 }, right_bottom = { x = 96, y = 96 } })
+  decorate_financial_district(surface)
   return surface
 end
 

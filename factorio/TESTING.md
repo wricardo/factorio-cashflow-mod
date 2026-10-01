@@ -38,7 +38,7 @@ VAULT RETURNS OUT ──► VAULT DEPOSIT IN         (reinvest)  or  CASHFLOW CA
 
 | # | Do | Expect |
 |---|---|---|
-| 1 | Start the scenario (Play → Scenarios → Cashflow Factory) | Dark lab floor. Six stations with coloured labels: PAYCHECK, NEEDS, WANTS (left column), CASHFLOW (middle), DEBT (top right), VAULT (bottom right). Gray port labels (`CASH IN >`, `SURPLUS OUT >`…). Left panel says Month 0 PAUSED. Inventory: 400 belts, 50 undergrounds, 50 splitters, 1 Cashflow meter. |
+| 1 | Start the scenario (Play → Scenarios → Cashflow Factory) | Concrete financial district. Six colour-framed stations: PAYCHECK, NEEDS, WANTS (left column), CASHFLOW (middle), DEBT (top right), VAULT (bottom right). Hazard lanes mark the Needs, Wants, and Debt routes. The centre-bottom **FINANCIAL LEDGER** shows Month 1 READY, cashflow, debt, vault, paid, borrowed, and deposited totals. Gray port labels (`CASH IN >`, `SURPLUS OUT >`…). Left panel says Month 0 PAUSED. Inventory: 400 belts, 50 undergrounds, 50 splitters, 1 Cashflow meter. |
 | 2 | Try to mine or rotate a station belt or splitter | Not possible. |
 | 3 | Press **Start**, build nothing, wait one month | Iron comes out of PAYCHECK and copper out of NEEDS/WANTS; each stub fills and stops. Labels show "unbelted $… -> debt at month end". At month 1, debt goes from $18,000 to $20,640 (the $2,640 of bills that never got onto a belt). The DEBT label shows the interest waiting. |
 | 4 | Belt PAYCHECK, NEEDS and WANTS into CASHFLOW | Copper and iron vanish in pairs at CASHFLOW. Its label shows cash building up (income > bills) and "paid" climbing. |

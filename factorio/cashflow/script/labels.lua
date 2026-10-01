@@ -1,4 +1,5 @@
 local acc = require("script.accounting")
+local layout = require("script.layout")
 
 local M = {}
 
@@ -26,9 +27,30 @@ local function on_entity(e, dy)
   return { entity = e, offset = { 0, dy } }
 end
 
+local function frame_station(surface, entity, color)
+  local position = entity.position
+  local x, y = position.x or position[1], position.y or position[2]
+  rendering.draw_rectangle({
+    color = color,
+    width = 3,
+    filled = false,
+    left_top = { x - 4.5, y - 2.0 },
+    right_bottom = { x + 4.5, y + 2.0 },
+    surface = surface,
+    draw_on_ground = true,
+  })
+end
+
 function M.create(cf, surface)
-  cf.labels = {}
+  local ledger = layout.ledger
+  cf.labels = {
+    ledger_title = text_at(surface, { ledger.x, ledger.y }, "FINANCIAL LEDGER", GOLD, 1.8),
+    ledger_status = text_at(surface, { ledger.x, ledger.y + 1.1 }, "", WHITE, 1.2),
+    ledger_balances = text_at(surface, { ledger.x, ledger.y + 2.1 }, "", WHITE, 1.1),
+    ledger_flow = text_at(surface, { ledger.x, ledger.y + 3.1 }, "", GREY, 1.0),
+  }
   for key, s in pairs(cf.entities) do
+    frame_station(surface, s.landmark, COLORS[key] or WHITE)
     cf.labels[key] = text_at(surface, on_entity(s.landmark, -1.4), "", COLORS[key] or WHITE)
     for _, port in ipairs(s.ports) do
       text_at(surface, { port[1] + 0.5, port[2] - 0.4 }, port[3], GREY, 0.9)
@@ -59,6 +81,9 @@ function M.refresh(cf, vault_plates)
   L.cashflow.text = "CASHFLOW cash " .. d(node.iron) .. "  bills " .. d(node.copper) .. "  paid " .. d(cf.stats.paid) .. overdue(out.unpaid)
   L.debt.text = "DEBT " .. acc.money(cf.debt_cents) .. overdue(out.interest)
   L.vault.text = "VAULT " .. d(vault_plates) .. (out.returns > 0 and ("  returns waiting " .. d(out.returns)) or "")
+  L.ledger_status.text = "MONTH " .. tostring(cf.month + 1) .. (cf.running and "  RUNNING" or "  READY — start simulation from the panel")
+  L.ledger_balances.text = "CASHFLOW " .. d(node.iron) .. "  |  DEBT " .. acc.money(cf.debt_cents) .. "  |  VAULT " .. d(vault_plates)
+  L.ledger_flow.text = "PAID " .. d(cf.stats.paid) .. "  |  BORROWED " .. d(cf.stats.borrowed) .. "  |  DEPOSITED " .. d(cf.stats.deposits)
   for _, m in pairs(cf.meters) do
     if m.entity.valid then
       local text = "METER cash " .. d(m.count.iron) .. " bills " .. d(m.count.copper) .. " (last month " .. d(m.last.iron) .. " / " .. d(m.last.copper) .. ")"
