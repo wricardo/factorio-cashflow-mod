@@ -37,9 +37,12 @@ local function monthly_cashflow(cf)
   return income - expenses
 end
 local function assets(cf)
-  local vault = cf.entities.vault
-  local inv = vault and vault.anchor.valid and vault.anchor.get_inventory(defines.inventory.chest)
-  return inv and inv.get_item_count("iron-plate") * acc.CENTS_PER_PLATE or cf.config.starting_assets_cents
+  local cents = 0
+  for _, vault in ipairs(cf.entities.vault or {}) do
+    local inv = vault.anchor.valid and vault.anchor.get_inventory(defines.inventory.chest)
+    cents = cents + (inv and inv.get_item_count("iron-plate") or 0) * acc.CENTS_PER_PLATE
+  end
+  return cents
 end
 function M.machine(machine)
   destroy(machine)

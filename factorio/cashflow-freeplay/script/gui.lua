@@ -24,8 +24,6 @@ function M.open_controller(p, cf)
   add_field(root, "account_name", "Account name", cf.name, root.tags, editable)
   add_field(root, "debt", "Starting debt ($)", tostring(cf.config.starting_debt_cents / 100), root.tags, editable and not cf.started)
   add_field(root, "assets", "Starting assets ($)", tostring(cf.config.starting_assets_cents / 100), root.tags, editable and not cf.started)
-  add_field(root, "apr", "Debt APR (%)", tostring(cf.config.debt_apr), root.tags, editable)
-  add_field(root, "return", "Asset return (%)", tostring(cf.config.asset_return), root.tags, editable)
   if cf.running then root.add { type = "label", caption = "Pause this account before changing its configuration." }
   elseif cf.started then root.add { type = "label", caption = "Starting debt and assets are locked after first Start." } end
   root.add { type = "button", name = "toggle", caption = cf.running and "Pause" or "Start", tags = root.tags }
@@ -46,6 +44,8 @@ function M.open_machine(p, machine, controllers)
   root.add { type = "label", caption = "Account" }
   root.add { type = "drop-down", name = "account", items = names, selected_index = selected, tags = root.tags, enabled = editable }
   if machine.role == "income" or machine.role == "expense" then add_field(root, "amount", "Monthly " .. machine.role .. " ($)", tostring(machine.config.monthly_cents / 100), root.tags, editable) end
+  if machine.role == "debt" then add_field(root, "apr", "Debt APR (%)", tostring(machine.config.apr), root.tags, editable) end
+  if machine.role == "vault" then add_field(root, "return", "Asset return (%)", tostring(machine.config.asset_return), root.tags, editable) end
   if machine.role == "expense" then
     root.add { type = "label", caption = "Expense category" }
     root.add { type = "drop-down", name = "category", items = { "needs", "wants" }, selected_index = machine.config.category == "wants" and 2 or 1, tags = root.tags, enabled = editable }

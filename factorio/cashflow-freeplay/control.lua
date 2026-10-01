@@ -23,9 +23,11 @@ local function unlink(machine)
   if not unit then return end
   local cf = state().accounts[unit]
   if cf then
-    if machine.role == "income" or machine.role == "expense" then
+    if machine.role == "cashflow" then
+      if cf.entities.cashflow == machine then cf.entities.cashflow = nil end
+    else
       for i, item in ipairs(cf.entities[machine.role]) do if item == machine then table.remove(cf.entities[machine.role], i); break end end
-    elseif cf.entities[machine.role] == machine then cf.entities[machine.role] = nil end
+    end
     cf.machines[machine.unit_number] = nil
     labels.account(cf)
   end
@@ -37,13 +39,13 @@ local function link(machine, controller_unit)
   if not cf then return false, "Select a controller." end
   if cf.running then return false, "Pause the controller before linking stations." end
   if not same_place(cf, machine.anchor) then return false, "Controllers must be on the same force and surface." end
-  if machine.role == "cashflow" or machine.role == "debt" or machine.role == "vault" then
-    if cf.entities[machine.role] and cf.entities[machine.role] ~= machine then return false, "That controller already has a linked " .. machine.role .. " station." end
+  if machine.role == "cashflow" and cf.entities.cashflow and cf.entities.cashflow ~= machine then
+    return false, "That controller already has a linked cashflow station."
   end
   unlink(machine)
   machine.controller_unit_number = controller_unit
   cf.machines[machine.unit_number] = machine
-  if machine.role == "income" or machine.role == "expense" then cf.entities[machine.role][#cf.entities[machine.role] + 1] = machine else cf.entities[machine.role] = machine end
+  if machine.role == "cashflow" then cf.entities.cashflow = machine else cf.entities[machine.role][#cf.entities[machine.role] + 1] = machine end
   labels.machine(machine, cf.name); labels.account(cf)
   return true
 end
@@ -62,7 +64,9 @@ local function register(entity)
   if s.machines[entity.unit_number] then return end
   local entities, err = layout.build(entity, role)
   if not entities then entity.surface.create_entity { name = "item-on-ground", position = entity.position, stack = { name = entity.name, count = 1 } }; entity.destroy(); return end
-  local machine = { unit_number = entity.unit_number, anchor = entity, role = role, entities = entities, config = { monthly_cents = 0, category = role == "expense" and "needs" or nil }, out = 0 }
+  local config = { monthly_cents = 0, category = role == "expense" and "needs" or nil }
+  if role == "debt" then config.apr = 18 elseif role == "vault" then config.asset_return = 7 end
+  local machine = { unit_number = entity.unit_number, anchor = entity, role = role, entities = entities, config = config, out = 0, debt_cents = 0, opening_debt_cents = 0, interest_carry_cents = 0, pending_interest = 0, opening_principal_cents = 0, return_carry_cents = 0, pending_returns = 0 }
   s.machines[machine.unit_number] = machine
   labels.machine(machine)
 end
@@ -102,21 +106,27 @@ remote.add_interface("cashflow-freeplay", {
   telemetry = function()
     local accounts = {}
     for unit, cf in pairs(state().accounts) do
+      local interest_carry, interest_out = 0, cf.out.interest or 0
+      for _, machine in ipairs(cf.entities.debt) do
+        interest_carry = interest_carry + (machine.interest_carry_cents or 0)
+        interest_out = interest_out + (machine.pending_interest or 0)
+      end
       accounts[unit] = {
         name = cf.name,
         running = cf.running,
         month = cf.month,
         tick_in_month = cf.tick_in_month,
         debt_cents = cf.debt_cents,
+        assets_cents = stations.vault_plates(cf) * acc.CENTS_PER_PLATE,
+        debt_accounts = #cf.entities.debt,
+        asset_accounts = #cf.entities.vault,
         opening_debt_cents = cf.opening_debt_cents,
         configuration = {
           starting_debt_cents = cf.config.starting_debt_cents,
           starting_assets_cents = cf.config.starting_assets_cents,
-          debt_apr = cf.config.debt_apr,
-          asset_return = cf.config.asset_return,
         },
-        interest_carry_cents = cf.interest_carry_cents,
-        interest_out_plates = cf.out.interest or 0,
+        interest_carry_cents = interest_carry,
+        interest_out_plates = interest_out,
       }
     end
     return accounts
@@ -131,6 +141,7 @@ local function normalize_layouts()
     labels.machine(machine, owner and owner.name)
   end
   for _, cf in pairs(s.accounts) do
+    account.normalize(cf)
     account.restore_month_buffers(cf)
     stations.sync_ledger(cf)
   end
@@ -183,42 +194,33 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
     local value = el.text
     if el.name == "account_name" then if value == "" or #value > 64 then return show_error(p, "Name must contain 1-64 characters.") end; cf.name = value
     elseif el.name == "debt" and not cf.started then local n = decimal(value, true); if not n then return show_error(p, "Starting debt must be a nonnegative number.") end; cf.config.starting_debt_cents = n
-    elseif el.name == "assets" and not cf.started then local n = decimal(value, true); if not n then return show_error(p, "Starting assets must be a nonnegative number.") end; cf.config.starting_assets_cents = n
-    elseif el.name == "apr" then local n = decimal(value); if not n then return show_error(p, "APR must be a nonnegative number.") end; cf.config.debt_apr = n
-    elseif el.name == "return" then local n = decimal(value); if not n then return show_error(p, "Return must be a nonnegative number.") end; cf.config.asset_return = n end
+    elseif el.name == "assets" and not cf.started then local n = decimal(value, true); if not n then return show_error(p, "Starting assets must be a nonnegative number.") end; cf.config.starting_assets_cents = n end
     labels.account(cf); return gui.open_controller(p, cf)
   end
   local machine = machine_from_tags(el.tags)
   local owner = machine and state().accounts[machine.controller_unit_number]
-  if machine and (not owner or player_can_change(p, owner)) and el.name == "amount" then
-    local n = decimal(el.text, true)
-    if not n then return show_error(p, "Amount must be a nonnegative number.") end
-    machine.config.monthly_cents = n
-    labels.machine(machine, owner and owner.name)
-  end
+  if not (machine and (not owner or player_can_change(p, owner))) then return end
+  local n = el.name == "amount" and decimal(el.text, true) or decimal(el.text)
+  if not n then return show_error(p, "Enter a nonnegative number.") end
+  if el.name == "amount" then machine.config.monthly_cents = n
+  elseif el.name == "apr" and machine.role == "debt" then machine.config.apr = n
+  elseif el.name == "return" and machine.role == "vault" then machine.config.asset_return = n
+  else return end
+  labels.machine(machine, owner and owner.name)
 end)
 script.on_event(defines.events.on_gui_text_changed, function(e)
   local p, el = game.get_player(e.player_index), e.element
   if not (el and el.valid) then return end
-  local cf = controller_from_tags(el.tags)
-  if cf and (el.name == "apr" or el.name == "return") then
-    if not player_can_change(p, cf) then return end
-    local n = decimal(el.text)
-    if n then
-      if el.name == "apr" then cf.config.debt_apr = n else cf.config.asset_return = n end
-      labels.account(cf)
-    end
-    return
-  end
-  if el.name ~= "amount" then return end
   local machine = machine_from_tags(el.tags)
   local owner = machine and state().accounts[machine.controller_unit_number]
   if not (machine and (not owner or not owner.running)) then return end
-  local n = decimal(el.text, true)
-  if n then
-    machine.config.monthly_cents = n
-    labels.machine(machine, owner and owner.name)
-  end
+  local n = el.name == "amount" and decimal(el.text, true) or decimal(el.text)
+  if not n then return end
+  if el.name == "amount" then machine.config.monthly_cents = n
+  elseif el.name == "apr" and machine.role == "debt" then machine.config.apr = n
+  elseif el.name == "return" and machine.role == "vault" then machine.config.asset_return = n
+  else return end
+  labels.machine(machine, owner and owner.name)
 end)
 script.on_event(defines.events.on_gui_selection_state_changed, function(e)
   local p, el = game.get_player(e.player_index), e.element
