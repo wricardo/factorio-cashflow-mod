@@ -44,10 +44,26 @@ local function assets(cf)
   end
   return cents
 end
+
+local function vault_cents(machine)
+  local inv = machine.anchor.valid and machine.anchor.get_inventory(defines.inventory.chest)
+  return (inv and inv.get_item_count("iron-plate") or 0) * acc.CENTS_PER_PLATE
+end
+local function finance_detail(machine)
+  if machine.role == "debt" then
+    local debt = machine.debt_cents or 0
+    return "\nDebt " .. acc.money(debt) .. "\nInterest " .. acc.money(acc.monthly_amount(debt, machine.config.apr)) .. "/month"
+  end
+  if machine.role == "vault" then
+    local held = vault_cents(machine)
+    return "\nAssets " .. acc.money(held) .. "\nReturn " .. acc.money(acc.monthly_amount(held, machine.config.asset_return)) .. "/month"
+  end
+  return ""
+end
 function M.machine(machine)
   destroy(machine)
   if machine.anchor.valid then
-    local detail = (machine.role == "income" or machine.role == "expense") and "\n" .. acc.money(machine.config.monthly_cents) .. "/month" or ""
+    local detail = (machine.role == "income" or machine.role == "expense") and "\n" .. acc.money(machine.config.monthly_cents) .. "/month" or finance_detail(machine)
     machine.label = rendering.draw_text { text = title(machine.role) .. detail, surface = machine.anchor.surface, target = machine.anchor, target_offset = label_offset(machine.role), alignment = "center", color = COLORS[machine.role] }
     for _, port in ipairs(layout.roles[machine.role].helpers) do
       local entity = machine.entities[port.key]

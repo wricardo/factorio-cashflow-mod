@@ -154,13 +154,18 @@ function T.account_and_port_labels_show_balances_without_station_account_names()
   h.open(player, income); edit(h, player, panel(player).amount, "500")
   h.open(player, expense); edit(h, player, panel(player).amount, "200")
   h.open(player, controller); h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  h.run_ticks(30)
   local cf = storage.cf_freeplay.accounts[controller.unit_number]
   eq(cf.label.text:find("Cashflow +$300/month", 1, true) ~= nil, true)
   eq(cf.label.text:find("Assets $12,000 • Debt $18,000", 1, true) ~= nil, true)
-  local machine = storage.cf_freeplay.machines[cashflow.unit_number]
-  eq(machine.label.text, "Cashflow")
-  eq(machine.port_labels.cash_in.alignment, "right")
-  eq(machine.port_labels.surplus_out.alignment, "left")
+  local cashflow_machine = storage.cf_freeplay.machines[cashflow.unit_number]
+  local debt_machine = storage.cf_freeplay.machines[debt.unit_number]
+  local vault_machine = storage.cf_freeplay.machines[vault.unit_number]
+  eq(cashflow_machine.label.text, "Cashflow")
+  eq(debt_machine.label.text, "Debt\nDebt $18,000\nInterest $270/month")
+  eq(vault_machine.label.text, "Asset Warehouse\nAssets $12,000\nReturn $70/month")
+  eq(cashflow_machine.port_labels.cash_in.alignment, "right")
+  eq(cashflow_machine.port_labels.surplus_out.alignment, "left")
 end
 function T.freeplay_allows_normal_buildings_and_items()
   local h, player = setup()
@@ -278,7 +283,7 @@ function T.station_buildings_keep_every_port_outside_its_footprint()
   eq(debt_ports.borrow_in.position.x, 48)
   eq(debt_ports.interest_out.position.x, 52)
   local warehouse = storage.cf_freeplay.machines[vault.unit_number]
-  eq(warehouse.label.text, "Asset Warehouse")
+  eq(warehouse.label.text, "Asset Warehouse\nAssets $0\nReturn $0/month")
   eq(warehouse.entities.deposit_in.position.x, 66)
   eq(warehouse.entities.return_out.position.x, 74)
 end

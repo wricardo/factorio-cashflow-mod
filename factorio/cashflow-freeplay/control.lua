@@ -252,4 +252,10 @@ script.on_nth_tick(SWEEP_TICKS, function()
     end
   end
 end)
-script.on_nth_tick(REFRESH_TICKS, function() for _, cf in pairs(state().accounts) do if cf.running then labels.account(cf) end end end)
+script.on_nth_tick(REFRESH_TICKS, function()
+  for _, cf in pairs(state().accounts) do
+    if cf.running then labels.account(cf) end
+    for _, machine in ipairs(cf.entities.debt) do labels.machine(machine) end
+    for _, machine in ipairs(cf.entities.vault) do labels.machine(machine) end
+  end
+end)
