@@ -22,7 +22,7 @@ function M.new(controller, config)
   return {
     controller = controller, surface_index = controller.surface.index, force_index = controller.force.index,
     name = "Account " .. controller.unit_number, running = false, started = false, month = 1, tick_in_month = 0,
-    config = defaults(config), machines = {}, entities = { income = {}, expense = {}, cashflow = {}, debt = {}, vault = {} }, plan = {}, emitted = {}, out = {},
+    config = defaults(config), machines = {}, entities = { income = {}, expense = {}, cashflow = {}, debt = {}, vault = {}, smelter = {} }, plan = {}, emitted = {}, out = {},
     node = { iron = 0, copper = 0 }, stats = {}, meters = {}, renderings = {},
     debt_cents = 0, opening_debt_cents = 0, opening_principal_cents = 0,
     consumed_total_cents = 0, goals = {}, won = false,
@@ -37,7 +37,7 @@ function M.normalize(cf)
   local legacy_debt = cf.debt_cents or 0
   local legacy_single_debt = cf.entities and cf.entities.debt and cf.entities.debt.anchor
   cf.entities = cf.entities or {}
-  for _, role in ipairs({ "income", "expense", "cashflow", "debt", "vault" }) do
+  for _, role in ipairs({ "income", "expense", "cashflow", "debt", "vault", "smelter" }) do
     local value = cf.entities[role]
     if value and value.anchor then cf.entities[role] = { value }
     elseif not value then cf.entities[role] = {} end
@@ -67,6 +67,7 @@ function M.normalize(cf)
     machine.return_carry_cents = machine.return_carry_cents or 0
     machine.pending_returns = machine.pending_returns or 0
   end
+  for _, machine in ipairs(cf.entities.smelter) do machine.pending_salary = machine.pending_salary or 0 end
   cf.out = cf.out or stations.new_outputs()
   stations.refresh_totals(cf)
 end

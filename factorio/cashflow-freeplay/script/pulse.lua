@@ -40,6 +40,7 @@ function M.close_month(cf)
   cf.last_report = report
   cf.out.surplus = cf.out.surplus + node_iron
   cf.out.unpaid = cf.out.unpaid + node_copper
+  for _, machine in ipairs(cf.entities.smelter) do machine.batch_done = nil end
   cf.month, cf.tick_in_month = cf.month + 1, 0
   cf.plan = account.plan_month(cf)
   account.reset_month(cf, true)

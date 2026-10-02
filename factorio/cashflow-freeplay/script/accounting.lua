@@ -8,6 +8,10 @@ M.TICKS_PER_MONTH = 3600
 -- Income/Expense stations emit through one blue (express) belt port: 45 plates/s caps it at
 -- $27,000/month, so configured amounts are limited to $20,000 (2,000 plates) per station.
 M.MAX_STATION_MONTHLY_CENTS = 2000000
+-- Smelter stations: each month's salary needs one hand-delivered batch of this much coal, and
+-- smelting it takes SMELT_TICKS (2 seconds) before the salary plates start leaving CASH OUT.
+M.SMELTER_COAL_PER_MONTH = 50
+M.SMELT_TICKS = 120
 
 -- Matches Math.round in simulation.js for the non-negative values used here.
 function M.round(v)

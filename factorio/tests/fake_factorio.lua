@@ -1,12 +1,16 @@
 -- Minimal stand-in for the Factorio runtime API, enough to load both mods and run months.
 local host_require = require
 local F = {}
-local function new_inventory()
+-- Item capacity of the fixed-size station chests (data.lua: slots x 50-item coal stacks);
+-- every other fake inventory is effectively unlimited.
+F.inventory_limits = { ["cf-freeplay-smelter"] = 50, ["cf-freeplay-coal"] = 1000 }
+local function new_inventory(limit)
   local inv = { items = {} }
+  local function total() local n = 0; for _, count in pairs(inv.items) do n = n + count end; return n end
   function inv.get_item_count(name) return inv.items[name] or 0 end
-  function inv.insert(stack) if stack.count <= 0 then error("count must be positive") end; inv.items[stack.name] = (inv.items[stack.name] or 0) + stack.count; return stack.count end
+  function inv.insert(stack) if stack.count <= 0 then error("count must be positive") end; local n = limit and math.min(stack.count, limit - total()) or stack.count; if n <= 0 then return 0 end; inv.items[stack.name] = (inv.items[stack.name] or 0) + n; return n end
   function inv.remove(stack) if stack.count <= 0 then error("count must be positive") end; local n = math.min(inv.items[stack.name] or 0, stack.count); inv.items[stack.name] = (inv.items[stack.name] or 0) - n; return n end
-  function inv.get_insertable_count() return 1000000 end
+  function inv.get_insertable_count() return limit and limit - total() or 1000000 end
   function inv.get_contents() local out = {}; for name, count in pairs(inv.items) do if count > 0 then out[#out + 1] = { name = name, count = count, quality = "normal" } end end; return out end
   return inv
 end
@@ -26,7 +30,7 @@ local next_unit = 1
 local function new_entity(surface, spec)
   local e = { name = spec.name, position = spec.position or { x = 0, y = 0 }, direction = spec.direction or 2, surface = surface, force = spec.force or { index = 1 }, valid = true, unit_number = next_unit, minable = true, operable = true, rotatable = true }
   next_unit = next_unit + 1
-  local lines, inv = { new_line(4), new_line(4) }, new_inventory()
+  local lines, inv = { new_line(4), new_line(4) }, new_inventory(F.inventory_limits[spec.name])
   function e.get_transport_line(i) return lines[i] end
   function e.get_inventory() return inv end
   function e.destroy() e.valid = false end
@@ -72,7 +76,7 @@ function F.install(opts)
   opts = opts or {}; local h = { events = {}, nth = {}, logs = {}, tick = 0 }; local event_ids = {}
   local names = { "on_player_created", "on_chunk_generated", "on_gui_click", "on_runtime_mod_setting_changed", "on_player_main_inventory_changed", "on_built_entity", "on_player_mined_entity", "on_robot_mined_entity", "on_robot_built_entity", "on_entity_died", "script_raised_built", "script_raised_revive", "script_raised_destroy", "on_entity_cloned", "on_research_finished", "on_force_created", "on_gui_opened", "on_gui_confirmed", "on_gui_text_changed", "on_gui_selection_state_changed" }
   for i, name in ipairs(names) do event_ids[name] = i end
-  _G.defines = { events = event_ids, direction = { north = 0, east = 4, south = 8, west = 12 }, inventory = { chest = 1 } }
+  _G.defines = { events = event_ids, direction = { north = 0, east = 4, south = 8, west = 12 }, inventory = { chest = 1 }, entity_status_diode = { green = 1, yellow = 2 } }
   local g = {}; for k, v in pairs(default_settings) do g[k] = { value = (opts.settings and opts.settings[k]) or v } end; _G.settings = { global = g }
   _G.storage = opts.storage or {}
   _G.remote = {
@@ -86,8 +90,9 @@ function F.install(opts)
   _G.prototypes = { item = {} }
   h.frames = {}
   _G.rendering = {
-    draw_text = function(spec) local obj = { text = spec.text, target_offset = spec.target_offset, alignment = spec.alignment, valid = true }; function obj.destroy() obj.valid = false end; return obj end,
+    draw_text = function(spec) local obj = { text = spec.text, color = spec.color, target_offset = spec.target_offset, alignment = spec.alignment, valid = true }; function obj.destroy() obj.valid = false end; return obj end,
     draw_rectangle = function(spec) h.frames[#h.frames + 1] = spec; local obj = { valid = true }; function obj.destroy() obj.valid = false end; return obj end,
+    draw_animation = function() local obj = { valid = true }; function obj.destroy() obj.valid = false end; return obj end,
   }
   _G.log = function(msg) h.logs[#h.logs + 1] = msg end
   for name in pairs(package.loaded) do if name == "control" or name:match("^script%.") then package.loaded[name] = nil end end

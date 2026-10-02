@@ -16,13 +16,16 @@ local function state()
   storage.cf_freeplay = storage.cf_freeplay or { schema_version = 1, station_layout_version = STATION_LAYOUT_VERSION, accounts = {}, machines = {} }
   return storage.cf_freeplay
 end
--- Returns the station role ("controller", "income", "expense", "cashflow", "debt", "vault")
--- for one of our entities, or nil if the entity isn't ours or has no role suffix.
+-- Returns the station role ("controller", "income", "expense", "cashflow", "debt", "vault",
+-- "smelter") for one of our entities, or nil if the entity isn't ours or has no linkable role.
+-- Coal Supply (cf-freeplay-coal) is deliberately not a role: it links to no account, so
+-- opening it shows its plain vanilla chest window.
 local function role_of(entity)
   if not (entity and entity.valid and entity.name:sub(1, #PREFIX) == PREFIX) then return nil end
   local role = entity.name:sub(#PREFIX + 1)
-  return ({ controller = true, income = true, expense = true, cashflow = true, debt = true, vault = true })[role] and role or nil
+  return ({ controller = true, income = true, expense = true, cashflow = true, debt = true, vault = true, smelter = true })[role] and role or nil
 end
+local COAL_SUPPLY = PREFIX .. "coal"
 -- True when both records sit on the same surface and force (accounts never cross either).
 local function same_place(a, b) return a.surface_index == b.surface.index and a.force_index == b.force.index end
 -- Detaches a machine from its controller: removes it from cf.entities[role]/cf.machines and
@@ -50,13 +53,20 @@ local function link(machine, controller_unit)
   machine.controller_unit_number = controller_unit
   cf.machines[machine.unit_number] = machine
   cf.entities[machine.role][#cf.entities[machine.role] + 1] = machine
-  labels.machine(machine, cf.name); labels.account(cf)
+  labels.machine(machine, cf); labels.account(cf)
   return true
 end
 -- on_built handler: creates the controller account or machine record for a freshly placed
 -- cf-freeplay-* entity, building its hidden helper-port belts via station_layout.build.
--- Destroys-and-drops the entity if there isn't room for its ports.
+-- Destroys-and-drops the entity if there isn't room for its ports. A Coal Supply is only
+-- tracked for refilling.
 local function register(entity)
+  if entity and entity.valid and entity.name == COAL_SUPPLY and entity.unit_number then
+    state().coal_supplies[entity.unit_number] = entity
+    stations.refill_coal(entity)
+    labels.coal_supply(entity)
+    return
+  end
   local role = role_of(entity)
   if not role or not entity.unit_number then return end
   local s = state()
@@ -73,7 +83,7 @@ local function register(entity)
   if not entities then entity.surface.create_entity { name = "item-on-ground", position = entity.position, stack = { name = entity.name, count = 1 } }; entity.destroy(); return end
   local config = { monthly_cents = 0, category = role == "expense" and "needs" or nil }
   if role == "debt" then config.apr = 18 elseif role == "vault" then config.asset_return = 7 end
-  local machine = { unit_number = entity.unit_number, anchor = entity, role = role, entities = entities, config = config, out = 0, opening_debt_cents = 0, interest_carry_cents = 0, pending_interest = 0, opening_principal_cents = 0, return_carry_cents = 0, pending_returns = 0 }
+  local machine = { unit_number = entity.unit_number, anchor = entity, role = role, entities = entities, config = config, out = 0, opening_debt_cents = 0, interest_carry_cents = 0, pending_interest = 0, opening_principal_cents = 0, return_carry_cents = 0, pending_returns = 0, pending_salary = 0 }
   s.machines[machine.unit_number] = machine
   labels.machine(machine)
 end
@@ -83,6 +93,7 @@ end
 local function remove(entity)
   if not entity or not entity.unit_number then return end
   local s, cf = state(), state().accounts[entity.unit_number]
+  s.coal_supplies[entity.unit_number] = nil
   if cf then
     for _, machine in pairs(cf.machines) do machine.controller_unit_number = nil; labels.machine(machine) end
     labels.destroy_account(cf); s.accounts[entity.unit_number] = nil
@@ -154,11 +165,12 @@ remote.add_interface("cashflow-freeplay", {
 -- saves made with an older station_layout_version or account.normalize shape self-heal.
 local function normalize_layouts()
   local s = state()
+  s.coal_supplies = s.coal_supplies or {}
   for _, machine in pairs(s.machines) do
     layout.normalize(machine)
     if machine.config and machine.config.monthly_cents then machine.config.monthly_cents = math.min(machine.config.monthly_cents, acc.MAX_STATION_MONTHLY_CENTS) end
     local owner = machine.controller_unit_number and s.accounts[machine.controller_unit_number]
-    labels.machine(machine, owner and owner.name)
+    labels.machine(machine, owner)
   end
   for _, cf in pairs(s.accounts) do
     account.normalize(cf)
@@ -244,7 +256,9 @@ end)
 -- Pause just flips the flag so configuration can be edited again.
 script.on_event(defines.events.on_gui_click, function(e)
   local p, el = game.get_player(e.player_index), e.element
-  if not (el and el.valid and el.name == "toggle") then return end
+  if not (el and el.valid) then return end
+  if el.tags and el.tags.cf_freeplay_close then gui.close(p); return end
+  if el.name ~= "toggle" then return end
   local cf = controller_from_tags(el.tags)
   if not player_can_access(p, cf) then return show_error(p, "Controller is unavailable.") end
   if cf.running then cf.running = false else local ok, reason = account.start(cf, stations); if not ok then return show_error(p, reason) end end
@@ -280,7 +294,7 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
   elseif el.name == "apr" and machine.role == "debt" then machine.config.apr = n
   elseif el.name == "return" and machine.role == "vault" then machine.config.asset_return = n
   else return end
-  labels.machine(machine, owner and owner.name)
+  labels.machine(machine, owner)
 end)
 -- Live textfield edits mirror on_gui_confirmed's per-machine validation so the label
 -- updates as the player types, but silently ignore invalid input instead of erroring.
@@ -296,7 +310,7 @@ script.on_event(defines.events.on_gui_text_changed, function(e)
   elseif el.name == "apr" and machine.role == "debt" then machine.config.apr = n
   elseif el.name == "return" and machine.role == "vault" then machine.config.asset_return = n
   else return end
-  labels.machine(machine, owner and owner.name)
+  labels.machine(machine, owner)
 end)
 -- Dropdown changes: expense needs/wants category, or re-linking a machine to a different
 -- controller (index 1 is "Unlinked"). Rejects link attempts while the target is running.
@@ -333,12 +347,19 @@ script.on_nth_tick(SWEEP_TICKS, function()
     end
   end
 end)
--- Slow loop: refreshes the floating controller/debt/vault labels so displayed balances and
--- rates stay current without redrawing them every sweep tick.
+-- Slow loop: refreshes the floating controller/debt/vault/smelter labels so displayed balances,
+-- rates, and coal loads stay current without redrawing them every sweep tick, and tops every
+-- Coal Supply back up to full.
 script.on_nth_tick(REFRESH_TICKS, function()
-  for _, cf in pairs(state().accounts) do
+  local s = state()
+  for _, cf in pairs(s.accounts) do
     if cf.running then labels.account(cf) end
-    for _, machine in ipairs(cf.entities.debt) do labels.machine(machine) end
-    for _, machine in ipairs(cf.entities.vault) do labels.machine(machine) end
+    for _, machine in ipairs(cf.entities.cashflow) do labels.machine(machine, cf) end
+    for _, machine in ipairs(cf.entities.debt) do labels.machine(machine, cf) end
+    for _, machine in ipairs(cf.entities.vault) do labels.machine(machine, cf) end
+  end
+  for _, machine in pairs(s.machines) do if machine.role == "smelter" then labels.machine(machine) end end
+  for unit, entity in pairs(s.coal_supplies) do
+    if entity.valid then stations.refill_coal(entity); labels.refresh_coal(entity) else s.coal_supplies[unit] = nil end
   end
 end)

@@ -9,7 +9,7 @@
 local acc = require("script.accounting")
 local layout = require("script.station_layout")
 local M = {}
-local IRON, COPPER, P, ALL = "iron-plate", "copper-plate", acc.CENTS_PER_PLATE, 100000
+local IRON, COPPER, COAL, P, ALL = "iron-plate", "copper-plate", "coal", acc.CENTS_PER_PLATE, 100000
 local LINES = { 1, 2 }
 M.IRON, M.COPPER = IRON, COPPER
 
@@ -248,12 +248,44 @@ local function vault(cf)
   end
 end
 
+-- Each Smelter turns one hand-delivered batch of SMELTER_COAL_PER_MONTH coal into its configured
+-- salary, at most once per month: the coal is consumed when smelting starts, the furnace glows
+-- for SMELT_TICKS, then the salary (rounded up to whole plates) queues on its CASH OUT belt.
+-- `batch_done` is cleared by pulse.close_month; a batch started late in a month still finishes.
+local function smelter(cf, ticks)
+  for _, machine in ipairs(cf.entities.smelter) do
+    if machine.smelt_ticks then
+      machine.smelt_ticks = machine.smelt_ticks - ticks
+      if machine.smelt_ticks <= 0 then
+        if machine.smelt_glow and machine.smelt_glow.valid then machine.smelt_glow.destroy() end
+        machine.smelt_ticks, machine.smelt_glow = nil, nil
+        machine.pending_salary = machine.pending_salary + math.ceil(machine.config.monthly_cents / P)
+      end
+    elseif not machine.batch_done then
+      local inv = inventory(machine.anchor)
+      if inv and inv.get_item_count(COAL) >= acc.SMELTER_COAL_PER_MONTH then
+        inv.remove({ name = COAL, count = acc.SMELTER_COAL_PER_MONTH })
+        machine.batch_done, machine.smelt_ticks = true, acc.SMELT_TICKS
+        machine.smelt_glow = rendering.draw_animation { animation = "cf-freeplay-smelter-heater", surface = machine.anchor.surface, target = machine.anchor }
+      end
+    end
+    machine.pending_salary = machine.pending_salary - M.push(machine.entities.out, IRON, machine.pending_salary)
+  end
+end
+
+-- Tops a Coal Supply chest back up to full. It belongs to no account and runs while paused.
+function M.refill_coal(entity)
+  local inv = inventory(entity)
+  local room = inv and inv.get_insertable_count(COAL) or 0
+  if room > 0 then inv.insert({ name = COAL, count = room }) end
+end
+
 -- Called every SWEEP_TICKS for a running account: advances the month clock, runs every
 -- station's belt I/O, then flushes any pending surplus/unpaid/interest/returns onto their
 -- output belts (capped by what each push actually accepts) and refreshes account totals.
 function M.sweep(cf, ticks)
   cf.tick_in_month = cf.tick_in_month + ticks
-  emit(cf, "income", IRON); emit(cf, "expense", COPPER); cashflow(cf); debt(cf); vault(cf)
+  emit(cf, "income", IRON); emit(cf, "expense", COPPER); cashflow(cf); debt(cf); vault(cf); smelter(cf, ticks)
   local e = cf.entities
   cf.out.surplus = cf.out.surplus - push_spread(e.cashflow, "surplus_out", IRON, cf.out.surplus)
   cf.out.unpaid = cf.out.unpaid - push_spread(e.cashflow, "unpaid_out", COPPER, cf.out.unpaid)
