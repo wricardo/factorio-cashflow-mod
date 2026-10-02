@@ -7,6 +7,7 @@ local function new_inventory()
   function inv.insert(stack) if stack.count <= 0 then error("count must be positive") end; inv.items[stack.name] = (inv.items[stack.name] or 0) + stack.count; return stack.count end
   function inv.remove(stack) if stack.count <= 0 then error("count must be positive") end; local n = math.min(inv.items[stack.name] or 0, stack.count); inv.items[stack.name] = (inv.items[stack.name] or 0) - n; return n end
   function inv.get_insertable_count() return 1000000 end
+  function inv.get_contents() local out = {}; for name, count in pairs(inv.items) do if count > 0 then out[#out + 1] = { name = name, count = count, quality = "normal" } end end; return out end
   return inv
 end
 local function new_line(cap)
@@ -41,7 +42,7 @@ local function new_surface(name, index)
   function s.find_entities_filtered() return {} end
   function s.find_non_colliding_position(_, pos) return pos end
   function s.create_entity(spec) return new_entity(s, spec) end
-  function s.spill_item_stack(_, stack) s.spilled[#s.spilled + 1] = stack end
+  function s.spill_item_stack(params) s.spilled[#s.spilled + 1] = params end
   return s
 end
 local function new_gui_element(spec)

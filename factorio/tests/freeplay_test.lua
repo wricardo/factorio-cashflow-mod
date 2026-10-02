@@ -66,6 +66,56 @@ function T.station_ports_are_labeled_and_amounts_save_while_paused()
   h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
   eq(storage.cf_freeplay.accounts[controller.unit_number].running, false)
 end
+function T.income_and_expense_amounts_are_capped_at_the_blue_belt_limit()
+  local h, player = setup()
+  local income, expense = h.build("cf-freeplay-income", player), h.build("cf-freeplay-expense", player)
+  local mi, me = storage.cf_freeplay.machines[income.unit_number], storage.cf_freeplay.machines[expense.unit_number]
+  h.open(player, income)
+  h.text(player, panel(player).amount, "20000")
+  eq(mi.config.monthly_cents, 2000000, "exactly $20,000 is allowed")
+  h.text(player, panel(player).amount, "25000")
+  eq(mi.config.monthly_cents, 2000000, "typing past the cap clamps instead of keeping a stale partial value")
+  h.open(player, expense)
+  local field = panel(player).amount
+  edit(h, player, field, "99999.99")
+  eq(me.config.monthly_cents, 2000000)
+  eq(field.text, "20000")
+  eq(player.prints[#player.prints]:find("$20,000", 1, true) ~= nil, true)
+  me.config.monthly_cents = 5000000
+  h.configuration_changed({})
+  eq(me.config.monthly_cents, 2000000, "saves with an over-cap amount are clamped on load")
+end
+function T.legacy_chest_controller_is_replaced_in_place_keeping_its_account()
+  local h, player = setup()
+  local old = h.build("cf-freeplay-controller", player, { x = 7, y = 9 })
+  local _, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, old); h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  h.run_ticks(MONTH + 30)
+  local cf = storage.cf_freeplay.accounts[old.unit_number]
+  eq(cf.month, 2)
+  old.get_inventory().insert({ name = "iron-plate", count = 25 })
+  h.open(player, old)
+  -- migrations/cashflow-freeplay_0.2.23.json renames the pre-0.2.23 chest before control.lua runs.
+  old.name = "cf-freeplay-legacy-controller"
+  h.configuration_changed({})
+  local new = cf.controller
+  eq(old.valid, false)
+  eq(new.valid, true); eq(new.name, "cf-freeplay-controller")
+  eq(new.position.x, 7); eq(new.position.y, 9)
+  eq(storage.cf_freeplay.accounts[old.unit_number], nil)
+  eq(storage.cf_freeplay.accounts[new.unit_number], cf, "account is re-keyed, not recreated")
+  eq(cf.month, 2); eq(cf.running, true); eq(cf.started, true)
+  for _, machine in pairs(cf.machines) do eq(machine.controller_unit_number, new.unit_number) end
+  local spilled = game.surfaces.nauvis.spilled[1]
+  eq(spilled.stack.name, "iron-plate"); eq(spilled.stack.count, 25)
+  eq(panel(player), nil, "a panel tagged with the destroyed controller is closed")
+  cf.entities.cashflow[1].entities.cash_in.get_transport_line(1).put("iron-plate", 3)
+  h.run_ticks(2)
+  eq(cf.stats.cash_in, 3, "the migrated account keeps running its linked stations")
+  h.open(player, new)
+  eq(panel(player).caption, "Cashflow: " .. cf.name)
+end
 
 function T.paused_apr_edits_apply_before_resuming_without_confirming()
   local h, player = setup()
@@ -97,11 +147,11 @@ function T.station_chests_hold_monthly_buffers_and_live_balances()
   eq(cf.entities.expense[1].anchor.get_inventory().get_item_count("copper-plate"), 200)
   eq(cf.entities.debt[1].anchor.get_inventory().get_item_count("copper-plate"), 1800)
   eq(cf.entities.vault[1].anchor.get_inventory().get_item_count("iron-plate"), 1200)
-  cf.entities.cashflow.entities.cash_in.get_transport_line(1).put("iron-plate", 3)
-  cf.entities.cashflow.entities.bills_in.get_transport_line(1).put("copper-plate", 1)
+  cf.entities.cashflow[1].entities.cash_in.get_transport_line(1).put("iron-plate", 3)
+  cf.entities.cashflow[1].entities.bills_in.get_transport_line(1).put("copper-plate", 1)
   h.run_ticks(2)
-  eq(cf.entities.cashflow.anchor.get_inventory().get_item_count("iron-plate"), 2)
-  eq(cf.entities.cashflow.anchor.get_inventory().get_item_count("copper-plate"), 0)
+  eq(cf.entities.cashflow[1].anchor.get_inventory().get_item_count("iron-plate"), 2)
+  eq(cf.entities.cashflow[1].anchor.get_inventory().get_item_count("copper-plate"), 0)
 end
 function T.configuration_change_moves_hidden_ledgers_into_station_chests()
   local h, player = setup()
@@ -199,9 +249,50 @@ function T.month_close_keeps_pending_station_outputs()
   for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
   h.open(player, controller)
   h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
-  storage.cf_freeplay.accounts[controller.unit_number].entities.cashflow.entities.cash_in.get_transport_line(1).insert_at_back({ name = "iron-plate", count = 10 })
+  storage.cf_freeplay.accounts[controller.unit_number].entities.cashflow[1].entities.cash_in.get_transport_line(1).insert_at_back({ name = "iron-plate", count = 10 })
   h.run_ticks(MONTH)
   eq(storage.cf_freeplay.accounts[controller.unit_number].out.surplus, 10)
+end
+function T.account_label_shows_year_and_month_and_rolls_over()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local _, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, controller)
+  h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  local cf = storage.cf_freeplay.accounts[controller.unit_number]
+  eq(cf.label.text:find("Year 1 Month 1", 1, true) ~= nil, true)
+  h.run_ticks(MONTH + 30)
+  eq(cf.month, 2)
+  eq(cf.label.text:find("Year 1 Month 2", 1, true) ~= nil, true)
+  h.run_ticks(MONTH * 11)
+  eq(cf.month, 13)
+  eq(cf.label.text:find("Year 2 Month 1", 1, true) ~= nil, true)
+end
+function T.cashflow_label_counts_returns_routed_back_as_cash_not_just_income_minus_expense()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local cashflow = h.build("cf-freeplay-cashflow", player)
+  local debt = h.build("cf-freeplay-debt", player)
+  local vault = h.build("cf-freeplay-vault", player)
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, controller); h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  local cf = storage.cf_freeplay.accounts[controller.unit_number]
+  h.run_ticks(MONTH)
+  h.run_ticks(2)
+  local vault_machine = cf.entities.vault[1]
+  local function drain(line)
+    local n = line.get_item_count("iron-plate")
+    if n > 0 then line.remove_item({ name = "iron-plate", count = n }) end
+    return n
+  end
+  local returned = drain(vault_machine.entities.return_out.get_transport_line(1)) + drain(vault_machine.entities.return_out.get_transport_line(2))
+  eq(returned, 7, "default 7% on $12,000 starting assets")
+  cf.entities.cashflow[1].entities.cash_in.get_transport_line(1).put("iron-plate", returned)
+  h.run_ticks(MONTH - 2)
+  eq(cf.last_report.cash_in, 7)
+  eq(cf.last_report.bills_in, 0)
+  eq(cf.label.text:find("Cashflow +$70/month", 1, true) ~= nil, true, "no income station at all, yet returns routed to CASH IN must show as cashflow")
 end
 function T.controllers_are_independent_and_configuration_is_player_routed()
   local h, a, b = setup()
@@ -277,6 +368,10 @@ function T.station_buildings_keep_every_port_outside_its_footprint()
   local cashflow_ports = storage.cf_freeplay.machines[cashflow.unit_number].entities
   eq(cashflow_ports.cash_in.position.x, 26)
   eq(cashflow_ports.cash_in.position.y, 28)
+  eq(cashflow_ports.cash_in_2.position.x, 26)
+  eq(cashflow_ports.cash_in_2.position.y, 26)
+  eq(cashflow_ports.bills_in_2.position.x, 26)
+  eq(cashflow_ports.bills_in_2.position.y, 34)
   eq(cashflow_ports.unpaid_out.position.x, 34)
   eq(cashflow_ports.unpaid_out.position.y, 32)
   local debt_ports = storage.cf_freeplay.machines[debt.unit_number].entities
@@ -309,13 +404,121 @@ function T.multiple_debt_and_asset_accounts_split_opening_balances()
   local cf = storage.cf_freeplay.accounts[controller.unit_number]
   eq(#cf.entities.debt, 2)
   eq(#cf.entities.vault, 2)
-  eq(cf.entities.debt[1].debt_cents, 900000)
-  eq(cf.entities.debt[2].debt_cents, 900000)
+  eq(cf.entities.debt[1].anchor.get_inventory().get_item_count("copper-plate"), 900)
+  eq(cf.entities.debt[2].anchor.get_inventory().get_item_count("copper-plate"), 900)
   eq(cf.entities.vault[1].anchor.get_inventory().get_item_count("iron-plate"), 600)
   eq(cf.entities.vault[2].anchor.get_inventory().get_item_count("iron-plate"), 600)
   eq(cf.entities.debt[2].config.apr, 12)
   eq(cf.entities.vault[2].config.asset_return, 6)
   eq(cf.debt_cents, 1800000)
   eq(cf.label.text:find("Assets $12,000 • Debt $18,000", 1, true) ~= nil, true)
+end
+function T.cashflow_station_has_a_second_cash_and_bills_line()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local _, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, controller); h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  local cf = storage.cf_freeplay.accounts[controller.unit_number]
+  local entities = cf.entities.cashflow[1].entities
+  entities.cash_in.get_transport_line(1).put("iron-plate", 3)
+  entities.cash_in_2.get_transport_line(1).put("iron-plate", 4)
+  entities.bills_in.get_transport_line(1).put("copper-plate", 1)
+  entities.bills_in_2.get_transport_line(1).put("copper-plate", 2)
+  h.run_ticks(2)
+  eq(cf.entities.cashflow[1].anchor.get_inventory().get_item_count("iron-plate"), 4)
+  eq(cf.entities.cashflow[1].anchor.get_inventory().get_item_count("copper-plate"), 0)
+  eq(cf.stats.cash_in, 7)
+  eq(cf.stats.bills_in, 3)
+end
+function T.multiple_cashflow_stations_pool_settlement_and_share_outputs()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local a, b = h.build("cf-freeplay-cashflow", player), h.build("cf-freeplay-cashflow", player)
+  local debt, vault = h.build("cf-freeplay-debt", player), h.build("cf-freeplay-vault", player)
+  for _, entity in ipairs({ a, b, debt, vault }) do link(h, player, entity, 2) end
+  local cf = storage.cf_freeplay.accounts[controller.unit_number]
+  eq(#cf.entities.cashflow, 2, "a second Cashflow station links to the same controller")
+  h.open(player, controller); h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  eq(cf.running, true)
+  local ma, mb = cf.entities.cashflow[1], cf.entities.cashflow[2]
+  ma.entities.cash_in.get_transport_line(1).put("iron-plate", 12)
+  mb.entities.bills_in.get_transport_line(1).put("copper-plate", 2)
+  h.run_ticks(2)
+  eq(cf.stats.paid, 2, "cash in station A pays bills in station B")
+  eq(ma.anchor.get_inventory().get_item_count("iron-plate"), 10)
+  eq(mb.anchor.get_inventory().get_item_count("copper-plate"), 0)
+  h.run_ticks(MONTH - 2)
+  eq(cf.last_report.cash_in, 12); eq(cf.last_report.bills_in, 2); eq(cf.last_report.surplus_plates, 10)
+  h.run_ticks(2)
+  local function belt(machine) local e = machine.entities.surplus_out; return e.get_transport_line(1).get_item_count("iron-plate") + e.get_transport_line(2).get_item_count("iron-plate") end
+  eq(belt(ma), 5, "surplus is spread round-robin across every station's SURPLUS OUT")
+  eq(belt(mb), 5)
+  eq(cf.out.surplus, 0)
+end
+function T.legacy_single_cashflow_station_migrates_to_a_list()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local _, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  local cf = storage.cf_freeplay.accounts[controller.unit_number]
+  local machine = cf.entities.cashflow[1]
+  cf.entities.cashflow = machine
+  h.configuration_changed({})
+  eq(#cf.entities.cashflow, 1); eq(cf.entities.cashflow[1], machine)
+  h.open(player, controller); h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  eq(cf.running, true)
+  machine.entities.cash_in.get_transport_line(1).put("iron-plate", 3)
+  h.run_ticks(2)
+  eq(cf.stats.cash_in, 3)
+end
+function T.configuration_change_recreates_a_missing_second_input_line()
+  local h, player = setup()
+  local cashflow = h.build("cf-freeplay-cashflow", player)
+  local machine = storage.cf_freeplay.machines[cashflow.unit_number]
+  machine.entities.cash_in_2.destroy()
+  machine.entities.cash_in_2 = nil
+  h.configuration_changed({})
+  eq(machine.entities.cash_in_2.valid, true)
+  eq(machine.entities.cash_in_2.direction, defines.direction.east)
+  eq(machine.entities.cash_in_2.position.x, machine.anchor.position.x - 4)
+  eq(machine.entities.cash_in_2.position.y, machine.anchor.position.y - 4)
+end
+function T.debt_chest_copper_is_the_real_balance_manual_edits_stick()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local _, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, controller); h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  local cf = storage.cf_freeplay.accounts[controller.unit_number]
+  local debt_machine = cf.entities.debt[1]
+  local inv = debt_machine.anchor.get_inventory()
+  eq(inv.get_item_count("copper-plate"), 1800)
+  inv.remove({ name = "copper-plate", count = 500 })
+  h.run_ticks(2)
+  eq(inv.get_item_count("copper-plate"), 1300, "manual removal must not be resynced back")
+  eq(cf.debt_cents, 1300000)
+end
+function T.pay_in_iron_cannot_exceed_existing_debt()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local _, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, controller); h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  local cf = storage.cf_freeplay.accounts[controller.unit_number]
+  local debt_machine = cf.entities.debt[1]
+  local inv = debt_machine.anchor.get_inventory()
+  inv.remove({ name = "copper-plate", count = inv.get_item_count("copper-plate") })
+  local pay_line = debt_machine.entities.pay_in.get_transport_line(1)
+  pay_line.put("iron-plate", 10)
+  h.run_ticks(2)
+  eq(inv.get_item_count("copper-plate"), 0)
+  eq(cf.stats.debt_paid, 0, "no debt, so no iron should be consumed")
+  eq(pay_line.get_item_count("iron-plate"), 10)
+  inv.insert({ name = "copper-plate", count = 5 })
+  h.run_ticks(2)
+  eq(inv.get_item_count("copper-plate"), 0, "iron pays off exactly the existing debt")
+  eq(cf.stats.debt_paid, 5)
+  eq(pay_line.get_item_count("iron-plate"), 5, "iron beyond the existing debt stays on the belt")
 end
 return T

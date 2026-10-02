@@ -6,7 +6,7 @@
 npm run package:factorio
 ```
 
-Copy `factorio/dist/cashflow-freeplay_0.2.17.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+Copy `factorio/dist/cashflow-freeplay_0.2.23.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
 ## Unrestricted Freeplay
 
 Cashflow Freeplay does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
@@ -15,19 +15,30 @@ Cashflow Freeplay does not disable, reject, or change availability of any vanill
 
 Version `0.2.15` makes every Cashflow station a Warehousing-derived building. Existing compact stations must be mined and re-placed before reconnecting their perimeter belt ports:
 
-- Controller, Income, Expense, and Debt are 3×3 Storehouses.
+- Income, Expense, and Debt are 3×3 Storehouses (the Controller was too until `0.2.23`).
 - Cashflow and Asset Warehouse are 6×6 Warehouses.
 
 Version `0.2.16` adds multiple linked Debt and Asset Warehouse stations per controller. Existing one-station accounts migrate automatically; new station APR and return settings default to the former controller-wide values.
 
 Version `0.2.17` labels each Debt Station with its debt and monthly interest, and each Asset Warehouse with its held assets and monthly return.
 
+Version `0.2.18` gives the Cashflow Station a second `CASH IN` and a second `BILLS IN` line (four input ports total, two output ports unchanged) so one belt of each kind is no longer a throughput ceiling. Existing Cashflow Stations gain the new ports automatically in place on load; nothing needs to be mined or moved. Wire a second belt into each new port the same way as the first; either, both, or neither cash/bills line may be used.
+
+Version `0.2.19` makes a Debt Station's copper-plate count *be* its debt, the same way an Asset Warehouse's iron-plate count is its assets — no hidden ledger syncing the chest behind your back. `BORROW IN` inserts copper straight into the chest; `PAY IN` iron is capped at the chest's current copper count and removes that many copper plates (the paying iron is spent, not stored, so you can't pre-pay debt that doesn't exist yet, and feeding more iron than the balance just backs the extra up on the belt). Because the chest is now the real balance, manually adding or removing copper plates genuinely changes the debt, exactly like a vault's iron.
+
+Version `0.2.20` shows elapsed game time as a 12-month calendar (`Year 1 Month 1`, rolling to `Year 2 Month 1` after month 12) instead of a raw running month count, in both the floating controller label and the controller's configuration panel.
+
+Version `0.2.21` fixes the controller label's monthly cashflow figure: it now shows last month's actual net settlement through the Cashflow station (cash in minus bills in), not just planned income minus expense. An account living entirely off Asset Warehouse returns routed into `CASH IN` — no Income station at all — now shows that as positive cashflow instead of `$0`. Before the first month closes there is no settlement yet, so the label falls back to the planned income-minus-expense figure.
+
+Version `0.2.22` allows any number of Cashflow stations per controller. Existing one-station accounts migrate automatically. Each station pulls from its own input belts into its own chest, but settlement is pooled per account: iron in any of the account's Cashflow stations pays copper in any other. Pending surplus and unpaid plates are pushed round-robin across every station's `SURPLUS OUT` and `UNPAID OUT`, so one backed-up output belt does not stall the rest.
+
+Version `0.2.23` makes the Cashflow Controller a 3×3 Computing Center with no inventory, instead of a 2,000-slot Storehouse chest (art: Sosciencity, CC BY 4.0). Opening it shows only the account panel. Existing controllers are replaced in place on load: same position, same account (name, month, running state, configuration), and the same linked stations. Anything that had been stored in an old controller chest is spilled on the ground beside it. The same version caps each Income and Expense station at `$20,000`/month (2,000 plates, under a blue belt's `$27,000`/month); larger amounts are clamped when typed or confirmed, and on load for existing saves.
 
 ## One account
 
-1. Craft and place one Cashflow Controller, Income Station, Expense Station, Cashflow Station, Debt Station, and Asset Warehouse. Leave clear space around each building: Storehouse ports are two tiles from centre; Warehouse ports are four tiles from centre.
-2. Open each station and select the controller. Cashflow plus at least one Debt and Asset Warehouse are required before Start; Income and Expense are optional. Configure Income and Expense amounts, each Debt station's APR, and each Asset Warehouse's return while the controller is paused.
-3. A controller may link any number of Debt stations and Asset Warehouses. On first Start, opening debt and assets are split evenly across the linked stations; any indivisible cents or plates go to the earliest linked stations. The controller totals every linked debt and asset balance.
+1. Craft and place one Cashflow Controller, Income Station, Expense Station, Cashflow Station, Debt Station, and Asset Warehouse. Leave clear space around each building: Storehouse ports are two tiles from centre; Warehouse ports are four tiles from centre. The Controller has no ports. Opening it must show only the Cashflow panel, with no empty market or chest window.
+2. Open each station and select the controller. At least one Cashflow, Debt, and Asset Warehouse station is required before Start; Income and Expense are optional. Configure Income and Expense amounts, each Debt station's APR, and each Asset Warehouse's return while the controller is paused.
+3. A controller may link any number of Cashflow, Debt, and Asset Warehouse stations. On first Start, opening debt and assets are split evenly across the linked stations; any indivisible cents or plates go to the earliest linked stations. The controller totals every linked debt and asset balance. With two Cashflow stations, feed cash into one and bills into the other: they must settle against each other, and month-end surplus must leave through both stations' `SURPLUS OUT`.
 4. Every helper belt has a colored port label. Green labels are outputs; orange labels are inputs. Route `IRON OUT` to `CASH IN`, `COPPER OUT` to `BILLS IN`, `SURPLUS OUT` to `DEPOSIT IN`, `UNPAID OUT` to `BORROW IN`, `INTEREST OUT` to `BILLS IN`, and `RETURN OUT` to `CASH IN`.
 5. Start the controller. Income and Expense chests fill with the month’s planned plates; each Debt chest displays its own copper balance and emits interest at its own APR; each Asset Warehouse displays its iron assets and emits returns at its own rate. The controller label aggregates every linked asset and debt balance.
 

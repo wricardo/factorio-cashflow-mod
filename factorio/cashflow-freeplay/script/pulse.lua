@@ -1,8 +1,14 @@
+-- Month-boundary close: collects unsettled copper (unpaid bills, un-pushed interest, and
+-- whatever's still in each expense/debt chest), applies it to debt and accrues this month's
+-- interest/returns, records a report for the GUI, rolls over to the next month's plan and
+-- buffers, and re-checks the financial-independence win condition. Triggered once per account
+-- from control.lua's sweep loop when tick_in_month reaches accounting.TICKS_PER_MONTH.
 local acc = require("script.accounting")
 local stations = require("script.stations")
 local account = require("script.account")
 local M = {}
 
+-- Runs the full month-close sequence described above for one running account.
 function M.close_month(cf)
   local waiting = cf.out.unpaid + cf.out.interest
   for _, machine in ipairs(cf.entities.expense) do
@@ -38,7 +44,6 @@ function M.close_month(cf)
   cf.plan = account.plan_month(cf)
   account.reset_month(cf, true)
   account.fill_month_buffers(cf)
-  stations.sync_ledger(cf)
   local needs, wants = 0, 0
   for _, machine in ipairs(cf.entities.expense) do
     local dollars = machine.config.monthly_cents / 100

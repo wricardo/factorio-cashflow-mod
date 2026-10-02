@@ -1,7 +1,11 @@
+-- Per-controller account lifecycle: config defaults, save-format migration (M.normalize),
+-- Start/Pause gating, and the monthly income/expense planning + buffer fill/restore used by
+-- control.lua's sweep loop. Actual belt/inventory work is delegated to stations.lua.
 local acc = require("script.accounting")
 local stations = require("script.stations")
 local M = {}
 
+-- Fills in config fields with factory defaults; `defaults(cf.config)` round-trips existing values.
 local function defaults(config)
   config = config or {}
   return {
@@ -11,23 +15,29 @@ local function defaults(config)
     asset_return = config.asset_return or 7,
   }
 end
+-- Fresh account record for a newly placed controller entity; `config` seeds starting
+-- debt/assets and (legacy) controller-wide debt APR / asset return.
 
 function M.new(controller, config)
   return {
     controller = controller, surface_index = controller.surface.index, force_index = controller.force.index,
     name = "Account " .. controller.unit_number, running = false, started = false, month = 1, tick_in_month = 0,
-    config = defaults(config), machines = {}, entities = { income = {}, expense = {}, debt = {}, vault = {} }, plan = {}, emitted = {}, out = {},
+    config = defaults(config), machines = {}, entities = { income = {}, expense = {}, cashflow = {}, debt = {}, vault = {} }, plan = {}, emitted = {}, out = {},
     node = { iron = 0, copper = 0 }, stats = {}, meters = {}, renderings = {},
     debt_cents = 0, opening_debt_cents = 0, opening_principal_cents = 0,
     consumed_total_cents = 0, goals = {}, won = false,
   }
 end
+-- Upgrades a stored account to the current shape: migrates single-station cashflow/debt/vault
+-- entries into per-station lists, backfills new per-station config fields (APR, return, carries) from
+-- the old controller-wide rates, and recovers a pre-multi-station legacy debt balance onto the
+-- first debt station. Called on load and after every config_changed.
 
 function M.normalize(cf)
   local legacy_debt = cf.debt_cents or 0
   local legacy_single_debt = cf.entities and cf.entities.debt and cf.entities.debt.anchor
   cf.entities = cf.entities or {}
-  for _, role in ipairs({ "income", "expense", "debt", "vault" }) do
+  for _, role in ipairs({ "income", "expense", "cashflow", "debt", "vault" }) do
     local value = cf.entities[role]
     if value and value.anchor then cf.entities[role] = { value }
     elseif not value then cf.entities[role] = {} end
@@ -36,14 +46,17 @@ function M.normalize(cf)
   for _, machine in ipairs(cf.entities.debt) do
     machine.config = machine.config or {}
     machine.config.apr = machine.config.apr or cf.config.debt_apr or 18
-    machine.debt_cents = machine.debt_cents or 0
-    machine.opening_debt_cents = machine.opening_debt_cents or machine.debt_cents
+    machine.debt_cents = nil
+    machine.opening_debt_cents = machine.opening_debt_cents or 0
     machine.interest_carry_cents = machine.interest_carry_cents or 0
     machine.pending_interest = machine.pending_interest or 0
   end
-  if legacy_single_debt and cf.entities.debt[1] and cf.entities.debt[1].debt_cents == 0 and legacy_debt > 0 then
+  if legacy_single_debt and cf.entities.debt[1] and legacy_debt > 0 then
     local machine = cf.entities.debt[1]
-    machine.debt_cents = legacy_debt
+    local inv = machine.anchor and machine.anchor.valid and machine.anchor.get_inventory(defines.inventory.chest)
+    if inv and inv.get_item_count("copper-plate") == 0 then
+      inv.insert({ name = "copper-plate", count = math.floor(legacy_debt / acc.CENTS_PER_PLATE) })
+    end
     machine.opening_debt_cents = cf.opening_debt_cents or legacy_debt
     machine.interest_carry_cents = cf.interest_carry_cents or 0
   end
@@ -57,14 +70,16 @@ function M.normalize(cf)
   cf.out = cf.out or stations.new_outputs()
   stations.refresh_totals(cf)
 end
+-- Start is blocked unless at least one Cashflow, Debt, and Asset Warehouse station is linked.
+-- Returns false + a human-readable reason naming the missing roles.
 
 function M.can_start(cf)
   local missing = {}
-  if not cf.entities.cashflow then missing[#missing + 1] = "cashflow" end
-  for _, role in ipairs({ "debt", "vault" }) do if #cf.entities[role] == 0 then missing[#missing + 1] = role end end
+  for _, role in ipairs({ "cashflow", "debt", "vault" }) do if #cf.entities[role] == 0 then missing[#missing + 1] = role end end
   if #missing > 0 then return false, "Missing linked " .. table.concat(missing, ", ") .. " station." end
   return true
 end
+-- Plates each income/expense station must emit this month, rounded up from its monthly cents.
 
 function M.plan_month(cf)
   local plan = { income = {}, expense = {} }
@@ -73,6 +88,8 @@ function M.plan_month(cf)
   end
   return plan
 end
+-- Clears this month's emitted/node/stats counters; `preserve_outputs` keeps cf.out (pending
+-- surplus/unpaid/interest/returns not yet pushed onto belts) instead of zeroing it.
 
 function M.reset_month(cf, preserve_outputs)
   cf.emitted = { income = {}, expense = {} }
@@ -83,6 +100,8 @@ function M.reset_month(cf, preserve_outputs)
   cf.node = { iron = 0, copper = 0 }
   cf.stats = stations.new_month_stats()
 end
+-- Deposits the full month's planned income/expense plates into each station's chest up
+-- front; `sweep`/`emit` then only trickles them onto the belt over the month.
 
 function M.fill_month_buffers(cf)
   for _, role in ipairs({ "income", "expense" }) do
@@ -94,6 +113,9 @@ function M.fill_month_buffers(cf)
   end
   cf.buffered_month = cf.month
 end
+-- After a save/reload mid-month, re-tops-up any station whose chest was drained (e.g. by a
+-- player) but whose planned plates for this month haven't all been emitted yet. No-op if the
+-- account hasn't started or buffers were already filled for the current month.
 
 function M.restore_month_buffers(cf)
   if not cf.started or cf.buffered_month == cf.month then return end
@@ -109,19 +131,21 @@ function M.restore_month_buffers(cf)
   end
   cf.buffered_month = cf.month
 end
+-- Validates required stations, and on the very first Start seeds opening debt/assets across
+-- the linked stations, captures opening balances, and plans + buffers month 1. Subsequent
+-- Starts (after a Pause) just resume; they don't reseed or replan.
 
 function M.start(cf, station_api)
   local ok, reason = M.can_start(cf)
   if not ok then return false, reason end
   if not cf.started then
     cf.started = true
-    station_api.distribute_debt(cf, cf.config.starting_debt_cents)
+    station_api.distribute_debt(cf, math.floor(cf.config.starting_debt_cents / acc.CENTS_PER_PLATE))
     station_api.seed_vault(cf, math.floor(cf.config.starting_assets_cents / acc.CENTS_PER_PLATE))
     station_api.capture_opening_balances(cf)
     cf.plan = M.plan_month(cf)
     M.reset_month(cf)
     M.fill_month_buffers(cf)
-    station_api.sync_ledger(cf)
   end
   cf.running = true
   return true

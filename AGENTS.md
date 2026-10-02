@@ -14,9 +14,9 @@ The root browser simulator is separate and shares no code with the mod.
 
 ## Architecture
 
-- **Data stage:** `factorio/cashflow-freeplay/data.lua` declares placeable controller/station prototypes and licensed Warehousing art for every station.
+- **Data stage:** `factorio/cashflow-freeplay/data.lua` declares placeable controller/station prototypes. The controller is a 3×3 `market` (no inventory) drawn with Sosciencity's CC BY 4.0 Computing Center art; the five storage stations are chests with licensed Warehousing art.
 - **Runtime stage:** `control.lua` registers entities, links stations to controllers, owns persistent accounts in `storage.cf_freeplay`, and drives the monthly simulation without restricting vanilla Freeplay content.
-- **Station layout:** `script/station_layout.lua` creates hidden helper ports outside building footprints: Controller, Income, Expense, and Debt are 3×3 Storehouses; Cashflow and Asset Warehouse are 6×6 Warehouses.
+- **Station layout:** `script/station_layout.lua` creates hidden helper ports outside building footprints: Income, Expense, and Debt are 3×3 Storehouses; Cashflow and Asset Warehouse are 6×6 Warehouses. The controller has no ports.
 - **Domain boundary:** `script/accounting.lua` has no Factorio API dependency and owns integer-cent money math and month close calculations. Keep Factorio integration in `control.lua`, `stations.lua`, and `pulse.lua`.
 - **Presentation:** `script/labels.lua` renders station/port labels and controller account status. `script/gui.lua` owns configuration UI.
 
@@ -28,7 +28,8 @@ The root browser simulator is separate and shares no code with the mod.
 - `factorio/cashflow-freeplay/script/accounting.lua` — pure finance engine.
 - `factorio/cashflow-freeplay/script/stations.lua`, `pulse.lua`, `account.lua` — simulation orchestration.
 - `factorio/cashflow-freeplay/script/labels.lua`, `gui.lua` — player-facing presentation.
-- `factorio/cashflow-freeplay/THIRD_PARTY_LICENSES.md` — required Warehousing artwork attribution and MIT notice.
+- `factorio/cashflow-freeplay/THIRD_PARTY_LICENSES.md` — required Sosciencity (CC BY 4.0) and Warehousing (MIT) artwork attribution.
+- `factorio/cashflow-freeplay/migrations/` — JSON prototype renames for saves from older versions; `control.lua` finishes each one in `on_configuration_changed`.
 - `factorio/tests/accounting_test.lua`, `freeplay_test.lua`, `fake_factorio.lua`, `run.lua` — local tests.
 - `factorio/cashflow-freeplay/TESTING.md` — in-game manual acceptance checklist.
 
@@ -43,7 +44,7 @@ npm run package:factorio
 
 The test command runs `accounting_test.lua` and `freeplay_test.lua` against `factorio/cashflow-freeplay`. Packaging produces `factorio/dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory.
 
-The local machine has no installed Factorio runtime. The fake-Factorio suite is the local smoke proof; perform the relevant manual steps in `factorio/cashflow-freeplay/TESTING.md` on Factorio 2.0.x for in-game rendering, collision, and belt verification.
+The fake-Factorio suite is the primary local proof. Factorio 2.0.x is also installed at `/Applications/factorio.app`: for data-stage or save-migration changes, run it headless with an isolated `--config` (write-data under `/tmp`) and `--mod-directory`, using `--create <save>` and `--benchmark <save> --benchmark-ticks N`. A throwaway probe mod can `log()` state; never touch the user's real Factorio profile. Perform the relevant manual steps in `factorio/cashflow-freeplay/TESTING.md` for rendering, GUI, collision, and belt verification.
 
 ## Conventions
 
@@ -52,6 +53,6 @@ The local machine has no installed Factorio runtime. The fake-Factorio suite is 
 - Preserve account isolation: controllers only link stations on the same surface and force.
 - Player-facing stations are placeable; only helper entities are hidden/locked.
 - Belt traffic is the accounting interface. Do not bypass routing with direct inventory transfers except the existing per-station monthly buffers.
-- Warehouse art is from Warehousing and must retain the notice in `THIRD_PARTY_LICENSES.md` and source comment if copied or changed.
+- Station art is from Warehousing (MIT) and controller art from Sosciencity (CC BY 4.0); both must keep their notices in `THIRD_PARTY_LICENSES.md` and the source comment in `data.lua` if copied or changed.
 - Do not restrict vanilla entities, recipes, ghosts, research, or infrastructure; this is normal Freeplay with finance stations.
 - No formatter or linter is configured.

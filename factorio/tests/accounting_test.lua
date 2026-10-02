@@ -22,6 +22,16 @@ function T.plates_round_up()
   eq(acc.plates(805), 81)
   eq(acc.plates(0), 0)
 end
+function T.calendar_rolls_year_every_twelve_months()
+  local y1, m1 = acc.calendar(1)
+  eq(y1, 1); eq(m1, 1)
+  local y12, m12 = acc.calendar(12)
+  eq(y12, 1); eq(m12, 12)
+  local y13, m13 = acc.calendar(13)
+  eq(y13, 2); eq(m13, 1)
+  local y25, m25 = acc.calendar(25)
+  eq(y25, 3); eq(m25, 1)
+end
 
 function T.emission_spreads_evenly_and_hits_total()
   eq(acc.due_by_tick(500, 0), 0)

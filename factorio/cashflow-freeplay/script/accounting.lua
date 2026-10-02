@@ -5,16 +5,21 @@ local M = {}
 
 M.CENTS_PER_PLATE = 1000
 M.TICKS_PER_MONTH = 3600
+-- Income/Expense stations emit through one blue (express) belt port: 45 plates/s caps it at
+-- $27,000/month, so configured amounts are limited to $20,000 (2,000 plates) per station.
+M.MAX_STATION_MONTHLY_CENTS = 2000000
 
 -- Matches Math.round in simulation.js for the non-negative values used here.
 function M.round(v)
   return math.floor(v + 0.5)
 end
 
+-- Cents owed/earned this month at a flat annual_pct/12 rate.
 function M.monthly_amount(cents, annual_pct)
   return M.round(cents * (annual_pct / 100 / 12))
 end
 
+-- Dollars rounded up to whole $10 plates.
 function M.plates(dollars)
   return math.ceil(dollars / 10)
 end
@@ -39,6 +44,9 @@ function M.to_plates(cents, carry_cents)
   return plates, total - plates * M.CENTS_PER_PLATE
 end
 
+-- Single-account month-close reference implementation, exercised directly by
+-- accounting_test.lua. The runtime (multi debt/vault station) equivalent lives in
+-- stations.close_finance; the two must stay numerically consistent.
 -- state:  debt_cents, opening_debt_cents, opening_principal_cents, interest_carry_cents, return_carry_cents
 -- inputs: copper_waiting (bills that never made it onto a belt), node_iron, node_copper, vault_plates
 -- rates:  debt_apr, asset_return (annual percent)
@@ -68,6 +76,8 @@ function M.close_month(state, inputs, rates)
     },
   }
 end
+-- Debt-free and principal's monthly return at least covers monthly needs+wants: the
+-- Rich Dad "financial independence" win condition.
 
 function M.is_financially_independent(debt_cents, principal_cents, asset_return, needs_dollars, wants_dollars)
   if debt_cents > 0 then return false end
@@ -75,6 +85,13 @@ function M.is_financially_independent(debt_cents, principal_cents, asset_return,
   return M.monthly_amount(principal_cents, asset_return) >= expenses_cents
 end
 
+-- Converts the 1-based month counter (cf.month) into a 12-month calendar: month 1 is
+-- Year 1 Month 1, month 13 is Year 2 Month 1.
+function M.calendar(month)
+  local m = month - 1
+  return math.floor(m / 12) + 1, (m % 12) + 1
+end
+-- Formats cents as a signed, thousands-grouped dollar string, e.g. -123456 -> "-$1,234".
 function M.money(cents)
   local negative = cents < 0
   local dollars = math.floor(math.abs(cents) / 100)

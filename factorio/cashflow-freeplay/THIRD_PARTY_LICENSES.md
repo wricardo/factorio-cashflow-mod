@@ -1,5 +1,11 @@
 # Third-party artwork
 
+## Sosciencity computing-center artwork (Cashflow Controller)
+
+`graphics/computing-center/computing-center.png`, `computing-center-shadowmap.png`, `computing-center-lightmap.png`, `computing-center-glow.png`, and `computing-center-icon.png` are the "Computing Center" artwork from [Sosciencity](https://mods.factorio.com/mod/sosciencity) ([graphics source](https://git.gay/tirisabella/sosciencity-graphics)) by tirisabella, Johanna Spieker and _traum, licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
+
+Changes: the image files are unmodified; Cashflow Freeplay draws them at 3/5 of their original in-game scale so the building fits a 3×3 footprint instead of 5×5.
+
 ## Warehousing warehouse artwork
 
 `graphics/warehouse/warehouse-basic.png` and `graphics/warehouse/warehouse-basic-shadow.png` are adapted from [Warehousing](https://github.com/Warehousing/Warehousing), copyright © 2016 David-John Miller (Anoyomouse). Used with the copyright holder's permission.

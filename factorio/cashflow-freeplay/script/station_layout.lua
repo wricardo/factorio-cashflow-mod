@@ -1,4 +1,6 @@
 -- Anchor-relative helper belts sit outside each station's building footprint.
+-- M.roles declares each role's helper ports (relative x/y offset from the anchor, port label,
+-- and whether it's an output/input) so labels.lua and stations.lua can address them by key.
 local M = {}
 
 M.roles = {
@@ -6,9 +8,10 @@ M.roles = {
   income = { helpers = { { key = "out", name = "cf-freeplay-belt", x = 2, y = 0, label = "IRON OUT", output = true } }, ports = { "out" } },
   expense = { helpers = { { key = "out", name = "cf-freeplay-belt", x = 2, y = 0, label = "COPPER OUT", output = true } }, ports = { "out" } },
   cashflow = { helpers = {
-    { key = "cash_in", name = "cf-freeplay-belt", x = -4, y = -2, label = "CASH IN", output = false }, { key = "bills_in", name = "cf-freeplay-belt", x = -4, y = 2, label = "BILLS IN", output = false },
+    { key = "cash_in", name = "cf-freeplay-belt", x = -4, y = -2, label = "CASH IN", output = false }, { key = "cash_in_2", name = "cf-freeplay-belt", x = -4, y = -4, label = "CASH IN", output = false },
+    { key = "bills_in", name = "cf-freeplay-belt", x = -4, y = 2, label = "BILLS IN", output = false }, { key = "bills_in_2", name = "cf-freeplay-belt", x = -4, y = 4, label = "BILLS IN", output = false },
     { key = "surplus_out", name = "cf-freeplay-belt", x = 4, y = -2, label = "SURPLUS OUT", output = true }, { key = "unpaid_out", name = "cf-freeplay-belt", x = 4, y = 2, label = "UNPAID OUT", output = true },
-  }, ports = { "cash_in", "bills_in", "surplus_out", "unpaid_out" } },
+  }, ports = { "cash_in", "cash_in_2", "bills_in", "bills_in_2", "surplus_out", "unpaid_out" } },
   debt = { helpers = {
     { key = "borrow_in", name = "cf-freeplay-belt", x = -2, y = -1, label = "BORROW IN", output = false }, { key = "pay_in", name = "cf-freeplay-belt", x = -2, y = 1, label = "PAY IN", output = false },
     { key = "interest_out", name = "cf-freeplay-belt", x = 2, y = 0, label = "INTEREST OUT", output = true },
@@ -19,6 +22,8 @@ M.roles = {
 }
 
 local EAST = defines.direction.east
+-- Creates every helper-port entity for `role` around `anchor` (hidden/locked belts, see
+-- data.lua's locked_copy). Rolls back and returns nil + a reason if any port doesn't fit.
 
 function M.build(anchor, role)
   local entities, spec = {}, M.roles[role]
@@ -36,6 +41,9 @@ function M.build(anchor, role)
   return entities
 end
 
+-- Pre-helper-port saves buffered income/expense directly in the anchor-adjacent "landmark"/
+-- "chest" helper; migrates any leftover plates into the anchor's own inventory and drops the
+-- now-redundant helper entity once it's empty.
 local function migrate_legacy_buffer(machine, key, item)
   local legacy = machine.entities and machine.entities[key]
   if not (legacy and legacy.valid and machine.anchor and machine.anchor.valid) then return end
@@ -48,14 +56,37 @@ local function migrate_legacy_buffer(machine, key, item)
   end
   if source.get_item_count(item) == 0 then legacy.destroy(); machine.entities[key] = nil end
 end
+-- Migrates legacy buffer entities into the anchor and re-asserts EAST direction on every
+-- helper belt (guards against accidental rotation). Called from control.lua's normalize_layouts.
 function M.normalize(machine)
   migrate_legacy_buffer(machine, "landmark", "copper-plate")
   migrate_legacy_buffer(machine, "chest", "iron-plate")
+  M.ensure_ports(machine)
   for _, entity in pairs(machine.entities or {}) do
     if entity.valid and entity.name == "cf-freeplay-belt" then entity.direction = EAST end
   end
 end
+-- Creates any helper-port entity declared in M.roles[machine.role] that machine.entities is
+-- still missing (e.g. a second cash/bills line added by a mod update). Best-effort: silently
+-- skips a port if there's no room, same as a fresh M.build would reject the whole station.
+function M.ensure_ports(machine)
+  local spec = machine.anchor and machine.anchor.valid and M.roles[machine.role]
+  if not spec then return end
+  for _, helper in ipairs(spec.helpers) do
+    local existing = machine.entities[helper.key]
+    if not (existing and existing.valid) then
+      local entity = machine.anchor.surface.create_entity { name = helper.name, position = { x = machine.anchor.position.x + helper.x, y = machine.anchor.position.y + helper.y }, direction = EAST, force = machine.anchor.force }
+      if entity then
+        entity.minable = false
+        entity.operable = false
+        entity.rotatable = false
+        machine.entities[helper.key] = entity
+      end
+    end
+  end
+end
 
+-- Destroys every helper-port entity owned by `machine` (called when its anchor is removed).
 function M.destroy(machine)
   for _, entity in pairs(machine.entities or {}) do if entity.valid then entity.destroy() end end
 end
