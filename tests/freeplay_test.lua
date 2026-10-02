@@ -1035,7 +1035,7 @@ function T.closing_a_month_floats_a_summary_above_each_cashflow_station()
   h.run_ticks(MONTH)
   eq(#player.flying_texts, 1)
   eq(player.flying_texts[1].position, cashflow.position)
-  eq(player.flying_texts[1].text:find("Year 1 Month 1 closed\nCash in $70", 1, true) ~= nil, true, player.flying_texts[1].text)
+  eq(player.flying_texts[1].text, "Year 1 Month 1 closed\nNet worth -$6,000 • Cashflow +$70")
 end
 
 function T.income_labels_show_how_many_plates_still_wait_for_the_belt()

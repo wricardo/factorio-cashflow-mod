@@ -26,12 +26,14 @@ local function close_year(cf)
     gui.refresh_player(player)
   end
 end
--- Floats a one-line summary of the month that just closed above each Cashflow Station, for every
--- connected player on the account's force (shown on the station's own surface only).
+-- Floats the closed month and its account-level net worth and cashflow above every Cashflow
+-- Station, for connected players on the account's force and the station's own surface only.
 local function announce_month(cf, report)
   local year, month = acc.calendar(cf.month - 1)
   local P = acc.CENTS_PER_PLATE
-  local text = "Year " .. year .. " Month " .. month .. " closed\nCash in " .. acc.money(report.cash_in * P) .. " • Bills " .. acc.money(report.bills_in * P) .. " • Paid " .. acc.money(report.paid * P)
+  local cashflow = (report.cash_in - report.bills_in) * P
+  local net_worth = stations.vault_plates(cf) * P - cf.debt_cents
+  local text = "Year " .. year .. " Month " .. month .. " closed\nNet worth " .. acc.money(net_worth) .. " • Cashflow " .. (cashflow >= 0 and "+" or "") .. acc.money(cashflow)
   for _, player in pairs(game.connected_players) do
     if player.force.index == cf.force_index then
       for _, machine in ipairs(cf.entities.cashflow) do
