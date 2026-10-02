@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
-# Installs the newest published Cashflow Freeplay release on macOS.
-# Usage: curl -fsSL https://github.com/wricardo/factorio-cashflow-mod/releases/latest/download/install-latest.sh | bash
+# Usage: curl -fsSL https://raw.githubusercontent.com/wricardo/factorio-cashflow-mod/main/scripts/install-latest.sh | bash
 set -euo pipefail
 
 repo="wricardo/factorio-cashflow-mod"

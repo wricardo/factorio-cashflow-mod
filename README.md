@@ -62,10 +62,10 @@ Defaults: $18,000 starting debt at 18% APR, $12,000 starting assets at 7% return
 On macOS, paste this into Terminal to download and install the newest published release. It replaces any older Cashflow Freeplay zip in Factorio's `mods` folder.
 
 ```bash
-curl -fsSL https://github.com/wricardo/factorio-cashflow-mod/releases/latest/download/install-latest.sh | bash
+curl -fsSL https://raw.githubusercontent.com/wricardo/factorio-cashflow-mod/main/scripts/install-latest.sh | bash
 ```
 
-The command downloads the public installer from this repository's latest GitHub release. It requires the built-in `curl` and `unzip` commands, validates that the downloaded zip is a Cashflow Freeplay archive, then installs it in `~/Library/Application Support/factorio/mods`. Set `FACTORIO_MODS_DIR` first to use a different Factorio mods directory. Enable **Cashflow Freeplay** in Factorio's Mods menu and restart the game.
+The command downloads the public installer from this repository's `main` branch. It requires the built-in `curl` and `unzip` commands, queries GitHub for the newest published release, validates that the downloaded zip is a Cashflow Freeplay archive, then installs it in `~/Library/Application Support/factorio/mods`. Set `FACTORIO_MODS_DIR` first to use a different Factorio mods directory. Enable **Cashflow Freeplay** in Factorio's Mods menu and restart the game.
 
 To inspect the script before running it, open [`scripts/install-latest.sh`](scripts/install-latest.sh). To build from source instead, run `npm run package` and copy `dist/cashflow-freeplay_<version>.zip` to Factorio's `mods` folder. Requires Factorio 2.0 and the base game; Space Age is not needed.
 
