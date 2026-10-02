@@ -765,7 +765,7 @@ function T.unpaid_bills_that_keep_flowing_do_not_alert()
   eq(#player.alerts, 0)
 end
 
-function T.month_length_setting_sets_the_month_and_scales_station_caps()
+function T.month_length_setting_sets_the_month_but_not_the_station_cap()
   local h = fake.install({ level = { level_name = "freeplay" }, settings = { ["cf-freeplay-month-seconds"] = 30 } })
   h.init()
   local player = h.add_player()
@@ -785,11 +785,12 @@ function T.month_length_setting_sets_the_month_and_scales_station_caps()
   local machine = storage.cf_freeplay.machines[spare.unit_number]
   h.open(player, spare)
   h.text(player, panel(player).amount, "15000")
-  eq(machine.config.monthly_cents, 1000000, "a 30 second month halves the $20,000 cap")
+  eq(machine.config.monthly_cents, 1500000, "a 30 second month still allows amounts up to $20,000")
+  h.text(player, panel(player).amount, "25000")
+  eq(machine.config.monthly_cents, 2000000, "and the cap is $20,000 whatever the month length")
   settings.global["cf-freeplay-month-seconds"].value = 15
   h.fire("on_runtime_mod_setting_changed", { setting = "cf-freeplay-month-seconds" })
-  eq(machine.config.monthly_cents, 500000, "shortening the month clamps existing stations")
-  eq(h.logs[#h.logs]:find("$5,000", 1, true) ~= nil, true, "players are told why")
+  eq(machine.config.monthly_cents, 2000000, "shortening the month later does not clamp existing stations")
 end
 
 function T.percent_splitter_drives_its_priority_from_the_configured_share()

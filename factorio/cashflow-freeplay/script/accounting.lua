@@ -5,13 +5,9 @@ local M = {}
 
 M.CENTS_PER_PLATE = 1000
 M.TICKS_PER_MONTH = 3600
--- Income/Expense stations emit through one blue (express) belt port: 45 plates/s caps it at
--- $27,000 over a 60-second month, so a station is limited to 2,000 plates ($20,000) per 60
--- seconds of month length. The cap scales with the month because it is a throughput limit.
-M.MAX_STATION_PLATES = 2000
-function M.max_station_cents(month_ticks)
-  return math.floor(M.MAX_STATION_PLATES * month_ticks / M.TICKS_PER_MONTH) * M.CENTS_PER_PLATE
-end
+-- Largest monthly amount one Income, Active Income or Expense station may be configured with,
+-- whatever the month length: 2,000 plates ($20,000).
+M.MAX_STATION_CENTS = 2000000
 -- Unpaid bills that cannot leave any UNPAID OUT belt for this many ticks (5 seconds) raise an alert.
 M.UNPAID_ALERT_TICKS = 300
 -- Smelter stations: each month's salary needs one hand-delivered batch of this much coal, and

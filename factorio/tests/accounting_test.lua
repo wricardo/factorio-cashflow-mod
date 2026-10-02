@@ -108,13 +108,6 @@ function T.year_report_totals_settled_cash_and_bills_and_nets_worth()
   eq(r.net_worth_cents, -600000, "debt above assets gives negative net worth")
 end
 
-function T.station_cap_scales_with_month_length_in_whole_plates()
-  eq(acc.max_station_cents(3600), 2000000, "a 60 second month allows $20,000")
-  eq(acc.max_station_cents(1800), 1000000, "half the month, half the cap")
-  eq(acc.max_station_cents(36000), 20000000, "ten times the month, ten times the cap")
-  eq(acc.max_station_cents(601) % acc.CENTS_PER_PLATE, 0, "caps are whole plates")
-end
-
 function T.money_formatting()
   eq(acc.money(0), "$0")
   eq(acc.money(99), "$0")

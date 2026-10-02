@@ -275,7 +275,7 @@ function M.open_machine(p, machine, controllers)
   local row = body.add { type = "flow", name = "account_row", direction = "horizontal" }
   row.add { type = "drop-down", name = "account", items = items, selected_index = selected, tags = tags, enabled = linkable }
   row.add { type = "button", name = "locate", caption = { "cf-gui.locate" }, tooltip = { "cf-gui.locate-tooltip" }, tags = { cf_freeplay_locate = true, machine_unit_number = machine.unit_number } }
-  local cap = acc.money(rules.max_station_cents())
+  local cap = acc.money(acc.MAX_STATION_CENTS)
   local amount_caption = { income = "cf-gui.field-income", expense = "cf-gui.field-expense", smelter = "cf-gui.field-salary" }
   if amount_caption[machine.role] then
     add_field(body, "amount", { amount_caption[machine.role] }, tostring(machine.config.monthly_cents / 100), tags, true, { numeric = true, decimal = true, suffix = "$" })

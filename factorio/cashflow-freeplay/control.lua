@@ -206,7 +206,7 @@ local function normalize_layouts()
   s.splitters = s.splitters or {}
   for _, machine in pairs(s.machines) do
     layout.normalize(machine)
-    if machine.config and machine.config.monthly_cents then machine.config.monthly_cents = math.min(machine.config.monthly_cents, rules.max_station_cents()) end
+    if machine.config and machine.config.monthly_cents then machine.config.monthly_cents = math.min(machine.config.monthly_cents, acc.MAX_STATION_CENTS) end
     local owner = machine.controller_unit_number and s.accounts[machine.controller_unit_number]
     labels.machine(machine, owner)
   end
@@ -349,10 +349,10 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
   local n = el.name == "amount" and decimal(el.text, true) or decimal(el.text)
   if not n then return show_error(p, "Enter a nonnegative number.") end
   if el.name == "amount" then
-    if n > rules.max_station_cents() then
-      n = rules.max_station_cents()
+    if n > acc.MAX_STATION_CENTS then
+      n = acc.MAX_STATION_CENTS
       el.text = tostring(math.floor(n / 100))
-      show_error(p, "Monthly amount is capped at " .. acc.money(n) .. " per station (blue belt limit).")
+      show_error(p, "Monthly amount is capped at " .. acc.money(n) .. " per station.")
     end
     machine.config.monthly_cents = n
   elseif el.name == "apr" and machine.role == "debt" then set_rate(machine, owner, "apr", "applied_apr", n)
@@ -372,7 +372,7 @@ script.on_event(defines.events.on_gui_text_changed, function(e)
   if not (machine and (not owner or player_can_access(p, owner))) then return end
   local n = el.name == "amount" and decimal(el.text, true) or decimal(el.text)
   if not n then return end
-  if el.name == "amount" then machine.config.monthly_cents = math.min(n, rules.max_station_cents())
+  if el.name == "amount" then machine.config.monthly_cents = math.min(n, acc.MAX_STATION_CENTS)
   elseif el.name == "apr" and machine.role == "debt" then set_rate(machine, owner, "apr", "applied_apr", n)
   elseif el.name == "return" and machine.role == "vault" then set_rate(machine, owner, "asset_return", "applied_return", n)
   else return end
@@ -434,19 +434,6 @@ script.on_nth_tick(SWEEP_TICKS, function()
       end
     end
   end
-end)
--- Shortening the month lowers the throughput cap on income/expense stations; clamp any amount
--- above the new cap so no station is configured beyond what its belt can deliver.
-script.on_event(defines.events.on_runtime_mod_setting_changed, function(e)
-  if e.setting ~= "cf-freeplay-month-seconds" then return end
-  local cap, clamped = rules.max_station_cents(), false
-  for _, machine in pairs(state().machines) do
-    if machine.config and machine.config.monthly_cents and machine.config.monthly_cents > cap then
-      machine.config.monthly_cents, clamped = cap, true
-      labels.machine(machine, machine.controller_unit_number and state().accounts[machine.controller_unit_number])
-    end
-  end
-  if clamped then game.print("Cashflow Freeplay: station amounts were capped at " .. acc.money(cap) .. " for the new month length (belt throughput limit).") end
 end)
 -- Unpaid bills that cannot leave UNPAID OUT are added to debt at month end, so warn the account's
 -- force on every Cashflow Station while they are stuck.

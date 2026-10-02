@@ -6,7 +6,7 @@
 npm run package:factorio
 ```
 
-Copy `factorio/dist/cashflow-freeplay_0.2.43.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+Copy `factorio/dist/cashflow-freeplay_0.2.45.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
 ## Unrestricted Freeplay
 
 Cashflow Freeplay does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
@@ -81,6 +81,8 @@ Version `0.2.43` reworks the panels and labels:
 
 Version `0.2.44` lets you edit station values without pausing the Account. Monthly amounts, Active Income salary, Debt APR, Investment return, Expense `Needs`/`Wants`, and the Account name can change while it runs; amounts and rates apply from the next month (the month already in progress closes at the plan and rates it started with, and the panel says so). Linking and unlinking a station, and the starting debt and assets, still require a pause. Edits made while paused apply to the current month as before.
 
+Version `0.2.45` fixes the per-station limit at `$20,000` a month for Passive Income, Active Income, and Expense stations, whatever the `Month length (seconds)` setting. Before, it shrank with shorter months. Plates still leave a station at belt speed (a blue belt moves about 45 plates a second), so in a month shorter than about 45 seconds a full `$20,000` station cannot move all its plates in time: leftover income plates carry into the next month, and unsent bills are added to debt at month end.
+
 ## Earned income
 
 1. Place a Coal Supply and an Active Income station apart from each other. Opening the Coal Supply must show only its chest window, with no Cashflow panel. Its label reads `Coal Supply`.
@@ -111,7 +113,7 @@ Iron and copper have no account identity. A plate emitted by any Account's stati
 
 1. Run an Account for 12 months (or lower `Month length` in Settings → Map). At the end of month 12 chat shows `<Account> • Year 1 report` with `Income`, `Expenses`, `Assets`, `Debt`, and `Net worth`. Open the Account: a `Yearly reports` list shows the same figures. Income and expenses must equal the cash and bill plates that reached the Cashflow Stations during the year.
 2. Disconnect or block a Cashflow Station's `UNPAID OUT` belt (or leave it unconnected) while bills go unpaid. Within a few seconds an alert with a copper-plate icon appears for that station, and hovering it shows `UNPAID OUT blocked` with a red status light. Reconnect the belt: the alert stops appearing and the light returns to green. A belt that is merely slow, but still moving, must not alert.
-3. Change `Month length (seconds)` mid-game. The next month closes at the new length, a station configured above the new `max` is capped with a chat message, and income/expense panels show the new `max`.
+3. Change `Month length (seconds)` mid-game. The next month closes at the new length. Station amounts and their `$20,000` limit do not change.
 
 ## Two accounts and lifecycle
 
