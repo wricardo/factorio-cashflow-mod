@@ -9,12 +9,13 @@ local layout = require("script.station_layout")
 local labels = require("script.labels")
 local gui = require("script.gui")
 local rules = require("script.rules")
+local split = require("script.split")
 local SWEEP_TICKS, REFRESH_TICKS = 2, 30 -- belt sweep cadence (ticks); label/account refresh cadence (ticks)
 local PREFIX, STATION_LAYOUT_VERSION = "cf-freeplay-", 2 -- entity name prefix; bump to force normalize_layouts() migration
 
 -- Lazily creates and returns the mod's single persistent state table.
 local function state()
-  storage.cf_freeplay = storage.cf_freeplay or { schema_version = 1, station_layout_version = STATION_LAYOUT_VERSION, accounts = {}, machines = {} }
+  storage.cf_freeplay = storage.cf_freeplay or { schema_version = 1, station_layout_version = STATION_LAYOUT_VERSION, accounts = {}, machines = {}, splitters = {} }
   return storage.cf_freeplay
 end
 -- Returns the station role ("controller", "income", "expense", "cashflow", "debt", "vault",
@@ -27,6 +28,7 @@ local function role_of(entity)
   return ({ controller = true, income = true, expense = true, cashflow = true, debt = true, vault = true, smelter = true })[role] and role or nil
 end
 local COAL_SUPPLY = PREFIX .. "coal"
+local PERCENT_SPLITTER = PREFIX .. "percent-splitter"
 -- True when both records sit on the same surface and force (accounts never cross either).
 local function same_place(a, b) return a.surface_index == b.surface.index and a.force_index == b.force.index end
 -- Detaches a machine from its controller: removes it from cf.entities[role]/cf.machines and
@@ -62,6 +64,12 @@ end
 -- Destroys-and-drops the entity if there isn't room for its ports. A Coal Supply is only
 -- tracked for refilling.
 local function register(entity)
+  if entity and entity.valid and entity.name == PERCENT_SPLITTER and entity.unit_number then
+    local rec = { entity = entity, percent = 50 }
+    state().splitters[entity.unit_number] = rec
+    labels.splitter(rec)
+    return
+  end
   if entity and entity.valid and entity.name == COAL_SUPPLY and entity.unit_number then
     state().coal_supplies[entity.unit_number] = entity
     stations.refill_coal(entity)
@@ -95,6 +103,8 @@ local function remove(entity)
   if not entity or not entity.unit_number then return end
   local s, cf = state(), state().accounts[entity.unit_number]
   s.coal_supplies[entity.unit_number] = nil
+  local splitter = s.splitters[entity.unit_number]
+  if splitter then labels.destroy_splitter(splitter); s.splitters[entity.unit_number] = nil; return end
   if cf then
     for _, machine in pairs(cf.machines) do machine.controller_unit_number = nil; labels.machine(machine) end
     labels.destroy_account(cf); s.accounts[entity.unit_number] = nil
@@ -126,7 +136,25 @@ local function decimal(text, cents)
 end
 local function controller_from_tags(tags) return tags and state().accounts[tags.controller_unit_number] end
 local function machine_from_tags(tags) return tags and state().machines[tags.machine_unit_number] end
+local function splitter_from_tags(tags) return tags and tags.splitter_unit_number and state().splitters[tags.splitter_unit_number] end
 local function show_error(player, text) player.print(text) end
+-- Sets a Percent Splitter's left-output share (whole percent, clamped to 0-100) and relabels it.
+local function set_splitter_percent(rec, percent)
+  rec.percent = split.clamp_percent(percent)
+  labels.splitter(rec)
+end
+-- Applies the text typed in a Percent Splitter panel. Invalid input is ignored while typing and
+-- reported on confirm; the panel's summary line follows every valid edit.
+local function edit_splitter(p, rec, el, confirmed)
+  local n = decimal(el.text)
+  if not n then
+    if confirmed then show_error(p, "Enter a percent from 0 to 100.") end
+    return
+  end
+  set_splitter_percent(rec, n)
+  if confirmed then el.text = tostring(rec.percent) end
+  if el.parent and el.parent.summary then el.parent.summary.caption = labels.split_summary(rec.percent) end
+end
 
 -- Script-interface query surface for external telemetry tools: per-account snapshot of
 -- balances, rates, and running/pending interest state. Read-only; no mutation.
@@ -159,6 +187,13 @@ remote.add_interface("cashflow-freeplay", {
     end
     return accounts
   end,
+  -- Sets a Percent Splitter's left-output share (0-100). Returns false for anything that is not one.
+  set_splitter_percent = function(entity, percent)
+    local rec = entity and entity.valid and entity.unit_number and state().splitters[entity.unit_number]
+    if not (rec and tonumber(percent)) then return false end
+    set_splitter_percent(rec, tonumber(percent))
+    return true
+  end,
 })
 
 -- Re-derives hidden port geometry/direction and config defaults for every machine/account,
@@ -167,6 +202,7 @@ remote.add_interface("cashflow-freeplay", {
 local function normalize_layouts()
   local s = state()
   s.coal_supplies = s.coal_supplies or {}
+  s.splitters = s.splitters or {}
   for _, machine in pairs(s.machines) do
     layout.normalize(machine)
     if machine.config and machine.config.monthly_cents then machine.config.monthly_cents = math.min(machine.config.monthly_cents, rules.max_station_cents()) end
@@ -245,6 +281,11 @@ for _, event in ipairs(remove_events) do script.on_event(event, function(e) remo
 -- `market` with no offers, so its empty vanilla market window is closed immediately.
 script.on_event(defines.events.on_gui_opened, function(e)
   local entity, p = e.entity, game.get_player(e.player_index)
+  if entity and entity.valid and entity.name == PERCENT_SPLITTER then
+    local rec = state().splitters[entity.unit_number]
+    if rec then gui.open_splitter(p, rec) end
+    return
+  end
   local role = role_of(entity)
   if not role then return end
   if role == "controller" then
@@ -271,6 +312,8 @@ end)
 script.on_event(defines.events.on_gui_confirmed, function(e)
   local p, el = game.get_player(e.player_index), e.element
   if not (el and el.valid) then return end
+  local splitter = splitter_from_tags(el.tags)
+  if splitter then return edit_splitter(p, splitter, el, true) end
   local cf = controller_from_tags(el.tags)
   if cf then
     if not player_can_change(p, cf) then return show_error(p, "Pause the account before changing configuration.") end
@@ -302,6 +345,8 @@ end)
 script.on_event(defines.events.on_gui_text_changed, function(e)
   local p, el = game.get_player(e.player_index), e.element
   if not (el and el.valid) then return end
+  local splitter = splitter_from_tags(el.tags)
+  if splitter then return edit_splitter(p, splitter, el, false) end
   local machine = machine_from_tags(el.tags)
   local owner = machine and state().accounts[machine.controller_unit_number]
   if not (machine and (not owner or not owner.running)) then return end
@@ -389,5 +434,16 @@ script.on_nth_tick(REFRESH_TICKS, function(e)
   for _, machine in pairs(s.machines) do if machine.role == "smelter" then labels.machine(machine) end end
   for unit, entity in pairs(s.coal_supplies) do
     if entity.valid then stations.refill_coal(entity); labels.refresh_coal(entity) else s.coal_supplies[unit] = nil end
+  end
+end)
+
+-- Drives every Percent Splitter's output priority from its configured share (script/split.lua).
+script.on_nth_tick(1, function(e)
+  local splitters = state().splitters
+  if not splitters then return end
+  for unit, rec in pairs(splitters) do
+    local entity = rec.entity
+    if entity.valid then entity.splitter_output_priority = split.priority(rec.percent, e.tick)
+    else labels.destroy_splitter(rec); splitters[unit] = nil end
   end
 end)

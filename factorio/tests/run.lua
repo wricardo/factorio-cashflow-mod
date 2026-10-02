@@ -4,7 +4,8 @@ package.path = source .. "/?.lua;" .. here .. "?.lua;" .. package.path
 
 local files = {}
 for i = 2, #arg do files[#files + 1] = arg[i] end
-if #files == 0 then files = { "accounting_test", "freeplay_test" } end
+-- freeplay_test installs the fake runtime, which disables `require`, so it must load last.
+if #files == 0 then files = { "accounting_test", "split_test", "freeplay_test" } end
 local passed, failed = 0, 0
 
 for _, file in ipairs(files) do

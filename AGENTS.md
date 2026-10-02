@@ -24,6 +24,7 @@ The root browser simulator is separate and shares no code with the mod.
 - **Settings:** `settings.lua` declares the runtime-global `cf-freeplay-month-seconds` (default 60). `script/rules.lua` is the only reader; income/expense station caps scale with it (`accounting.max_station_cents`) because the cap is a belt-throughput limit. There is no win condition; the game is free play.
 - **Reports and alerts:** `pulse.lua` closes a yearly report every 12th month (stored in `cf.year_reports`, shown in the Account panel and chat). `stations.sweep` tracks `cf.unpaid_blocked_ticks`; `control.lua` alerts when unpaid bills cannot leave `UNPAID OUT` for `accounting.UNPAID_ALERT_TICKS`.
 - **Presentation:** `script/labels.lua` renders station/port labels, hover-pane status, and controller account status. `script/gui.lua` owns configuration UI.
+- **Percent Splitter:** `cf-freeplay-percent-splitter` is a tinted copy of the vanilla splitter that links to no Account. `control.lua` keeps `storage.cf_freeplay.splitters[unit_number] = { entity, percent, label }` and sets `splitter_output_priority` every tick from `script/split.lua`, a pure 100-tick-window schedule (one contiguous left block per window; interleaving aliased against belt item spacing in real-engine measurements). `remote.call("cashflow-freeplay", "set_splitter_percent", entity, percent)` sets it from scripts.
 
 ## Key Files
 

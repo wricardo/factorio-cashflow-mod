@@ -6,7 +6,7 @@
 npm run package:factorio
 ```
 
-Copy `factorio/dist/cashflow-freeplay_0.2.39.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+Copy `factorio/dist/cashflow-freeplay_0.2.40.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
 ## Unrestricted Freeplay
 
 Cashflow Freeplay does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
@@ -64,6 +64,8 @@ Version `0.2.38` renames stations for players: the Cashflow Controller is **Acco
 
 Version `0.2.39` removes the unused win condition (the game is free play), adds a **yearly report** and an **alert for stuck unpaid bills**, and makes the **month length configurable**. A yearly report closes every 12th month with total income (cash plates settled at the Account's Cashflow Stations), total expenses (bill plates settled), and year-end assets, debt and net worth. It is announced in chat and kept in the Account panel (latest five). When unpaid bills cannot leave any `UNPAID OUT` belt for 5 seconds, every player on the Account's force gets an alert on its Cashflow Stations, and each station's hover pane shows `UNPAID OUT blocked` with a red light; such bills are added to debt at month end. The runtime-global setting `Month length (seconds)` (10–3600, default 60) sets the month; income/expense station limits scale with it ($20,000 per 60 seconds), and shortening the month caps existing stations.
 
+Version `0.2.40` adds the **Percent Splitter**: a vanilla splitter (blue tint, vanilla art and recipe, in the Cashflow crafting row) with an adjustable share. Open it and set the percent of items that leave the **left** output (left relative to the direction items travel); the right output gets the rest. It works for any item at full belt speed and links to no Account. If one output is blocked, items use the other. The mod does this by driving the splitter's output priority on a 100-tick window (`script/split.lua`); measured on Factorio 2.0.77 the split stays within about 2 percentage points of the setting on a saturated belt and within about 1 point on sparse feeds. The splitter's own priority setting is managed by the mod and will be overwritten. Settings are not carried by blueprints yet: a placed or pasted Percent Splitter starts at 50%.
+
 ## Earned income
 
 1. Place a Coal Supply and an Active Income station apart from each other. Opening the Coal Supply must show only its chest window, with no Cashflow panel. Its label reads `Coal Supply`.
@@ -81,6 +83,14 @@ Version `0.2.39` removes the unused win condition (the game is free play), adds 
 5. Start the Account. Passive Income and Expense chests fill with the month’s planned plates; each linked Cashflow Station shows the signed monthly cashflow; each Debt chest displays its own copper balance and emits interest at its own APR; each Investment Account displays its iron assets and emits returns at its own rate. World labels remain compact on one line. Hovering any station must show its live metrics in the hover pane's status row, replacing `Normal`: Debt Stations include `APR`, Investment Accounts include `Return rate`. The Account label aggregates every linked asset and debt balance, but does not show monthly cashflow. Every custom panel must close when its `Close` button is pressed.
 
 Iron and copper have no account identity. A plate emitted by any Account's stations can enter another account's station; the receiving account processes it.
+
+## Percent Splitter
+
+1. Craft and place a Percent Splitter. Its label reads `Split 50% left • 50% right`; hovering shows `Left 50%` and `Right 50%`. Feed one belt of iron plates into one input and run belts away from both outputs: about half must go to each side.
+2. Open it. A `Percent Splitter` panel appears beside Factorio's own splitter window. Enter `30`: the label and the panel summary change to `Left 30% • Right 70%`, and over a minute about 30% of items leave the left output (left is the output on your left as items travel).
+3. Enter `0` and `100`: everything leaves the right, then everything leaves the left. Enter `250`: it clamps to 100. Enter text: nothing changes and chat reports `Enter a percent from 0 to 100.`.
+4. Block one output belt: all items leave through the other output. Unblock it: the configured split resumes.
+5. Mine the splitter: its label disappears. A normal vanilla splitter next to it is unaffected.
 
 ## Yearly report, alerts, and month length
 

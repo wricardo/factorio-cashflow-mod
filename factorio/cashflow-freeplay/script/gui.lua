@@ -86,6 +86,18 @@ function M.open_machine(p, machine, controllers)
   if not editable then root.add { type = "label", caption = "Pause " .. owner.name .. " before changing this station." } end
 end
 
+-- Percent Splitter panel: the share of items that leave the left output; the right output gets
+-- the rest. Opens next to Factorio's own splitter window, which keeps its filter controls.
+function M.open_splitter(p, rec)
+  close(p)
+  local root = p.gui.left.add { type = "frame", name = ROOT, direction = "vertical", caption = labels.display_name("percent-splitter"), tags = { splitter_unit_number = rec.entity.unit_number } }
+  add_close(root)
+  root.add { type = "label", caption = "Left output share (%)" }
+  root.add { type = "textfield", name = "percent", text = tostring(rec.percent), numeric = true, tags = root.tags }
+  root.add { type = "label", name = "summary", caption = labels.split_summary(rec.percent), tags = root.tags }
+  root.add { type = "label", caption = "Left is the output on your left when facing the way items travel. If one output is blocked, items use the other." }
+end
+
 -- Re-renders an open controller panel after account state changes elsewhere (e.g. month
 -- close); closes it if the bound controller became invalid or moved out of reach.
 function M.refresh_player(p)

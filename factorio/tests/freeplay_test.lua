@@ -752,4 +752,49 @@ function T.month_length_setting_sets_the_month_and_scales_station_caps()
   eq(machine.config.monthly_cents, 500000, "shortening the month clamps existing stations")
   eq(h.logs[#h.logs]:find("$5,000", 1, true) ~= nil, true, "players are told why")
 end
+
+function T.percent_splitter_drives_its_priority_from_the_configured_share()
+  local h, player = setup()
+  local splitter = h.build("cf-freeplay-percent-splitter", player)
+  local rec = storage.cf_freeplay.splitters[splitter.unit_number]
+  eq(rec.percent, 50, "defaults to an even split")
+  eq(rec.label.text, "Split 50% left • 50% right")
+  eq(splitter.custom_status.label, "Left 50% \nRight 50%")
+  h.open(player, splitter)
+  edit(h, player, panel(player).percent, "30")
+  eq(rec.percent, 30)
+  eq(panel(player).summary.caption, "Left 30% • Right 70%")
+  eq(splitter.custom_status.label, "Left 30% \nRight 70%")
+  local lefts = 0
+  for _ = 1, 100 do
+    h.run_ticks(1)
+    if splitter.splitter_output_priority == "left" then lefts = lefts + 1 end
+  end
+  eq(lefts, 30, "30% of any 100 consecutive ticks favour the left output")
+  edit(h, player, panel(player).percent, "250")
+  eq(rec.percent, 100, "shares clamp to 100")
+  eq(panel(player).percent.text, "100")
+  edit(h, player, panel(player).percent, "abc")
+  eq(rec.percent, 100, "invalid text leaves the share alone")
+  eq(player.prints[#player.prints], "Enter a percent from 0 to 100.")
+  h.run_ticks(1)
+  eq(splitter.splitter_output_priority, "left", "100% always prioritises the left")
+end
+
+function T.percent_splitter_cleans_up_and_is_settable_through_the_remote_interface()
+  local h, player = setup()
+  local splitter, income = h.build("cf-freeplay-percent-splitter", player), h.build("cf-freeplay-income", player)
+  local rec = storage.cf_freeplay.splitters[splitter.unit_number]
+  eq(remote.call("cashflow-freeplay", "set_splitter_percent", splitter, 20), true)
+  eq(rec.percent, 20)
+  eq(remote.call("cashflow-freeplay", "set_splitter_percent", income, 20), false, "only Percent Splitters qualify")
+  local label = rec.label
+  h.mine(splitter, player)
+  eq(storage.cf_freeplay.splitters[splitter.unit_number], nil)
+  eq(label.valid, false, "its world label is destroyed with it")
+  local other = h.build("cf-freeplay-percent-splitter", player)
+  other.valid = false
+  h.run_ticks(1)
+  eq(next(storage.cf_freeplay.splitters), nil, "a splitter removed without an event is dropped on the next tick")
+end
 return T

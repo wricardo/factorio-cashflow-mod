@@ -13,7 +13,7 @@ end
 -- Short world-label title for a role, and the full entity name used for panel captions.
 -- Internal role keys (controller/income/vault/smelter) are unchanged so existing saves load.
 local TITLES = { income = "Passive Income", smelter = "Active Income", vault = "Investment Account" }
-local DISPLAY_NAMES = { controller = "Account", income = "Passive Income", expense = "Expense Station", cashflow = "Cashflow Station", debt = "Debt Station", vault = "Investment Account", smelter = "Active Income" }
+local DISPLAY_NAMES = { controller = "Account", income = "Passive Income", expense = "Expense Station", cashflow = "Cashflow Station", debt = "Debt Station", vault = "Investment Account", smelter = "Active Income", ["percent-splitter"] = "Percent Splitter" }
 local function title(role)
   return TITLES[role] or role:sub(1, 1):upper() .. role:sub(2)
 end
@@ -22,6 +22,8 @@ function M.display_name(role) return DISPLAY_NAMES[role] end
 function M.year_report_text(report)
   return "Income " .. acc.money(report.income_cents) .. " • Expenses " .. acc.money(report.expense_cents) .. "\nAssets " .. acc.money(report.assets_cents) .. " • Debt " .. acc.money(report.debt_cents) .. " • Net worth " .. acc.money(report.net_worth_cents)
 end
+-- "Left 30% • Right 70%" for a Percent Splitter's share, used by its panel.
+function M.split_summary(percent) return "Left " .. percent .. "% • Right " .. (100 - percent) .. "%" end
 -- Per-role label tint.
 
 local COLORS = {
@@ -33,6 +35,7 @@ local COLORS = {
   vault = { 1, 0.85, 0.4 },
   smelter = { 1, 0.65, 0.25 },
   coal = { 0.75, 0.75, 0.75 },
+  splitter = { 0.55, 0.85, 1 },
 }
 -- Title label is pushed higher above the bigger 6x6 cashflow/vault buildings.
 
@@ -185,6 +188,19 @@ function M.refresh_coal(entity)
   local capacity = coal + (inventory and inventory.get_insertable_count("coal") or 0)
   set_status(entity, defines.entity_status_diode.green, { "Coal " .. coal .. "/" .. capacity })
 end
+-- Percent Splitter: compact world label plus hover-pane status. `rec` is its record in
+-- storage.cf_freeplay.splitters ({ entity, percent, label }); the render object is kept so a
+-- change of percent replaces it instead of stacking labels.
+function M.splitter(rec)
+  if rec.label and rec.label.valid then rec.label.destroy() end
+  rec.label = nil
+  local entity = rec.entity
+  if not entity.valid then return end
+  local left, right = rec.percent, 100 - rec.percent
+  rec.label = rendering.draw_text { text = "Split " .. left .. "% left • " .. right .. "% right", surface = entity.surface, target = entity, target_offset = { 0, -1.5 }, alignment = "center", color = COLORS.splitter }
+  set_status(entity, defines.entity_status_diode.green, { "Left " .. left .. "%", "Right " .. right .. "%" })
+end
+function M.destroy_splitter(rec) if rec.label and rec.label.valid then rec.label.destroy() end end
 -- Thin wrappers so control.lua doesn't need to reach into `destroy` directly.
 function M.destroy_machine(machine) destroy(machine) end
 function M.destroy_account(cf) if cf.label and cf.label.valid then cf.label.destroy() end end

@@ -193,4 +193,40 @@ for index, role in ipairs({ "income", "expense", "cashflow", "debt", "vault", "s
   prototypes[#prototypes + 1] = recipe
 end
 
+-- Percent Splitter: a vanilla splitter (same size, belts, and art, tinted blue) whose output
+-- priority control.lua drives on a 100-tick duty cycle, so the chosen share of items leaves the
+-- left output. It links to no Account and needs no helper ports. Costs the vanilla splitter recipe.
+do
+  local name, order = "cf-freeplay-percent-splitter", "z[cashflow-freeplay]-9"
+  local TINT = { 0.55, 0.85, 1 }
+  -- Tints every non-shadow sprite layer under `node` (the splitter's own body, not its belts).
+  local function tint_layers(node)
+    if type(node) ~= "table" then return end
+    if node.filename and not node.draw_as_shadow then node.tint = TINT end
+    for _, child in pairs(node) do tint_layers(child) end
+  end
+  local vanilla_item = data.raw.item.splitter
+  local entity = table.deepcopy(data.raw.splitter.splitter)
+  entity.name = name
+  entity.minable = { mining_time = 0.1, result = name }
+  entity.fast_replaceable_group, entity.next_upgrade = nil, nil
+  entity.order = order
+  entity.localised_name = { "entity-name." .. name }
+  tint_layers(entity.structure)
+  tint_layers(entity.structure_patch)
+  entity.icon, entity.icons = nil, { { icon = vanilla_item.icon, icon_size = vanilla_item.icon_size or 64, tint = TINT } }
+  local item = table.deepcopy(vanilla_item)
+  item.name, item.place_result, item.order, item.subgroup = name, name, order, SUBGROUP.name
+  item.localised_name = { "item-name." .. name }
+  item.icon, item.icons = nil, table.deepcopy(entity.icons)
+  local recipe = {
+    type = "recipe", name = name, enabled = true, energy_required = 1,
+    ingredients = table.deepcopy(data.raw.recipe.splitter.ingredients),
+    results = { { type = "item", name = name, amount = 1 } },
+  }
+  prototypes[#prototypes + 1] = entity
+  prototypes[#prototypes + 1] = item
+  prototypes[#prototypes + 1] = recipe
+end
+
 data:extend(prototypes)
