@@ -504,11 +504,24 @@ function T.station_buildings_keep_every_port_outside_its_footprint()
   eq(cashflow_ports.unpaid_out.position.y, 32)
   local debt_ports = storage.cf_freeplay.machines[debt.unit_number].entities
   eq(debt_ports.borrow_in.position.x, 48)
+  eq(debt_ports.pay_in.position.y, 49, "PAY IN is the top input")
+  eq(debt_ports.borrow_in.position.y, 51, "BORROW IN is the bottom input")
   eq(debt_ports.interest_out.position.x, 52)
   local warehouse = storage.cf_freeplay.machines[vault.unit_number]
   eq(warehouse.label.text, "Investment Account • Assets $0 • Return $0/month")
   eq(warehouse.entities.deposit_in.position.x, 66)
   eq(warehouse.entities.return_out.position.x, 74)
+end
+
+function T.existing_debt_stations_keep_their_wired_ports_when_the_layout_changes()
+  local h, player = setup()
+  local debt = h.build("cf-freeplay-debt", player, { x = 50, y = 50 })
+  local ports = storage.cf_freeplay.machines[debt.unit_number].entities
+  -- A station built before the swap has BORROW IN on top and PAY IN below.
+  ports.borrow_in.position.y, ports.pay_in.position.y = 49, 51
+  h.configuration_changed({})
+  eq(ports.borrow_in.position.y, 49, "belts players already connected must not change meaning")
+  eq(ports.pay_in.position.y, 51)
 end
 
 function T.station_building_upgrade_notifies_existing_saves()

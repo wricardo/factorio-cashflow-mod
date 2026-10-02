@@ -6,7 +6,7 @@
 npm run package:factorio
 ```
 
-Copy `factorio/dist/cashflow-freeplay_0.2.40.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+Copy `factorio/dist/cashflow-freeplay_0.2.41.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
 ## Unrestricted Freeplay
 
 Cashflow Freeplay does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
@@ -65,6 +65,8 @@ Version `0.2.38` renames stations for players: the Cashflow Controller is **Acco
 Version `0.2.39` removes the unused win condition (the game is free play), adds a **yearly report** and an **alert for stuck unpaid bills**, and makes the **month length configurable**. A yearly report closes every 12th month with total income (cash plates settled at the Account's Cashflow Stations), total expenses (bill plates settled), and year-end assets, debt and net worth. It is announced in chat and kept in the Account panel (latest five). When unpaid bills cannot leave any `UNPAID OUT` belt for 5 seconds, every player on the Account's force gets an alert on its Cashflow Stations, and each station's hover pane shows `UNPAID OUT blocked` with a red light; such bills are added to debt at month end. The runtime-global setting `Month length (seconds)` (10–3600, default 60) sets the month; income/expense station limits scale with it ($20,000 per 60 seconds), and shortening the month caps existing stations.
 
 Version `0.2.40` adds the **Percent Splitter**: a vanilla splitter (blue tint, vanilla art and recipe, in the Cashflow crafting row) with an adjustable share. Open it and set the percent of items that leave the **left** output (left relative to the direction items travel); the right output gets the rest. It works for any item at full belt speed and links to no Account. If one output is blocked, items use the other. The mod does this by driving the splitter's output priority on a 100-tick window (`script/split.lua`); measured on Factorio 2.0.77 the split stays within about 2 percentage points of the setting on a saturated belt and within about 1 point on sparse feeds. The splitter's own priority setting is managed by the mod and will be overwritten. Settings are not carried by blueprints yet: a placed or pasted Percent Splitter starts at 50%.
+
+Version `0.2.41` puts a Debt Station's `PAY IN` on top and `BORROW IN` below it. Only newly placed Debt Stations get the new order: existing ones keep their ports where they are, because moving them would silently swap what the belts players already connected do. Mine and re-place a Debt Station to get the new layout.
 
 ## Earned income
 
