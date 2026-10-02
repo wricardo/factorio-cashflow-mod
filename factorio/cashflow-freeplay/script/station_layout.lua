@@ -15,7 +15,7 @@ M.roles = {
   }, ports = { "cash_in", "cash_in_2", "bills_in", "bills_in_2", "surplus_out", "unpaid_out" } },
   debt = { helpers = {
     { key = "borrow_in", name = "cf-freeplay-belt", x = -2, y = -1, label = "BORROW IN", output = false }, { key = "pay_in", name = "cf-freeplay-belt", x = -2, y = 1, label = "PAY IN", cash = true, output = false },
-    { key = "interest_out", name = "cf-freeplay-belt", x = 2, y = 0, label = "INTEREST OUT", output = true },
+    { key = "interest_out", name = "cf-freeplay-belt", x = 2, y = 0, label = "INTEREST OUT", copper = true, output = true },
   }, ports = { "borrow_in", "pay_in", "interest_out" } },
   vault = { helpers = {
     { key = "deposit_in", name = "cf-freeplay-belt", x = -4, y = 0, label = "DEPOSIT IN", cash = true, output = false }, { key = "return_out", name = "cf-freeplay-belt", x = 4, y = 0, label = "RETURN OUT", cash = true, output = true },

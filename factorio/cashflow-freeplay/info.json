@@ -1,9 +1,9 @@
 {
   "name": "cashflow-freeplay",
-  "version": "0.2.37",
+  "version": "0.2.38",
   "title": "Cashflow Freeplay",
   "author": "wricardo",
   "factorio_version": "2.0",
   "dependencies": ["base >= 2.0"],
-  "description": "Controller-owned personal cashflow accounts for ordinary Freeplay worlds. Iron plates are cash and copper plates are bills and debt."
+  "description": "Account-owned personal cashflow for ordinary Freeplay worlds. Iron plates are cash and copper plates are bills and debt."
 }

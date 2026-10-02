@@ -46,9 +46,9 @@ end
 -- controllers and mismatched surface/force. Every role may link any number of stations.
 local function link(machine, controller_unit)
   local cf = state().accounts[controller_unit]
-  if not cf then return false, "Select a controller." end
-  if cf.running then return false, "Pause the controller before linking stations." end
-  if not same_place(cf, machine.anchor) then return false, "Controllers must be on the same force and surface." end
+  if not cf then return false, "Select an account." end
+  if cf.running then return false, "Pause the account before linking stations." end
+  if not same_place(cf, machine.anchor) then return false, "Stations must be on the same force and surface as their account." end
   unlink(machine)
   machine.controller_unit_number = controller_unit
   cf.machines[machine.unit_number] = machine
@@ -203,7 +203,7 @@ local function migrate_legacy_controllers()
       for _, machine in pairs(cf.machines) do machine.controller_unit_number = controller.unit_number end
       labels.account(cf)
     else
-      game.print("[color=red]Cashflow Freeplay could not rebuild the controller for " .. cf.name .. "; place a new controller and relink its stations.[/color]")
+      game.print("[color=red]Cashflow Freeplay could not rebuild the Account " .. cf.name .. "; place a new Account and relink its stations.[/color]")
     end
   end
   if #legacy > 0 then for _, player in pairs(game.players) do gui.refresh_player(player) end end
@@ -260,7 +260,7 @@ script.on_event(defines.events.on_gui_click, function(e)
   if el.tags and el.tags.cf_freeplay_close then gui.close(p); return end
   if el.name ~= "toggle" then return end
   local cf = controller_from_tags(el.tags)
-  if not player_can_access(p, cf) then return show_error(p, "Controller is unavailable.") end
+  if not player_can_access(p, cf) then return show_error(p, "Account is unavailable.") end
   if cf.running then cf.running = false else local ok, reason = account.start(cf, stations); if not ok then return show_error(p, reason) end end
   labels.account(cf); gui.open_controller(p, cf)
 end)
@@ -272,7 +272,7 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
   if not (el and el.valid) then return end
   local cf = controller_from_tags(el.tags)
   if cf then
-    if not player_can_change(p, cf) then return show_error(p, "Pause the controller before changing configuration.") end
+    if not player_can_change(p, cf) then return show_error(p, "Pause the account before changing configuration.") end
     local value = el.text
     if el.name == "account_name" then if value == "" or #value > 64 then return show_error(p, "Name must contain 1-64 characters.") end; cf.name = value
     elseif el.name == "debt" and not cf.started then local n = decimal(value, true); if not n then return show_error(p, "Starting debt must be a nonnegative number.") end; cf.config.starting_debt_cents = n
@@ -320,7 +320,7 @@ script.on_event(defines.events.on_gui_selection_state_changed, function(e)
   local machine = machine_from_tags(el.tags)
   if not machine then return end
   local owner = state().accounts[machine.controller_unit_number]
-  if owner and not player_can_change(p, owner) then return show_error(p, "Pause the controller before changing configuration.") end
+  if owner and not player_can_change(p, owner) then return show_error(p, "Pause the account before changing configuration.") end
   if el.name == "category" then machine.config.category = el.selected_index == 2 and "wants" or "needs"; return end
   if el.name == "account" then
     if el.selected_index == 1 then unlink(machine); return end

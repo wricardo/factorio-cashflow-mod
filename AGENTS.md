@@ -2,14 +2,16 @@
 
 ## Project Overview
 
-This repository's primary game module is the Factorio 2.0 **Cashflow Freeplay** mod in `factorio/cashflow-freeplay/`. It adds player-placeable, controller-owned personal-finance stations to ordinary Freeplay worlds:
+This repository's primary game module is the Factorio 2.0 **Cashflow Freeplay** mod in `factorio/cashflow-freeplay/`. It adds player-placeable, Account-owned personal-finance stations to ordinary Freeplay worlds:
 
 - Iron plates represent $10 cash.
 - Copper plates represent $10 bills/debt.
-- Income and Expense stations emit monthly cash and bills (passive income needs no player action).
-- Smelter stations are earned income: each month the player carries a 50-coal batch from an unlinked Coal Supply into a linked Smelter, which smelts it for 2 seconds and emits its configured salary as iron plates.
-- Cashflow, Debt, and Asset Warehouse stations process belt traffic.
-- Each Cashflow Controller owns an independent account.
+- Passive Income and Expense stations emit monthly cash and bills (passive income needs no player action).
+- Active Income stations are earned income: each month the player carries a 50-coal batch from an unlinked Coal Supply into a linked Active Income station, which smelts it for 2 seconds and emits its configured salary as iron plates.
+- Cashflow, Debt, and Investment Account stations process belt traffic.
+- Each Account owns an independent set of linked stations.
+
+Player-facing names differ from internal IDs, which stay unchanged so existing saves load: Account = `controller`, Passive Income = `income`, Active Income = `smelter`, Investment Account = `vault`. `script/labels.lua` holds the display-name table; change names there and in `locale/en/`.
 
 The root browser simulator is separate and shares no code with the mod.
 

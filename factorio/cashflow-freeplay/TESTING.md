@@ -6,7 +6,7 @@
 npm run package:factorio
 ```
 
-Copy `factorio/dist/cashflow-freeplay_0.2.37.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+Copy `factorio/dist/cashflow-freeplay_0.2.38.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
 ## Unrestricted Freeplay
 
 Cashflow Freeplay does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
@@ -60,29 +60,31 @@ Version `0.2.35` restored compact one-line station labels.
 
 Version `0.2.37` shows each station's live metrics in the status row of Factorio's hover pane (the panel with the entity preview and `Storage`/`Health`), because Factorio offers mods no anchor for that pane: Account, then monthly amount (Income, Expense plus category), cashflow, debt and interest, assets and return, Smelter salary and coal status, or Coal Supply stock. The status light is green when linked and yellow when unlinked. The anchored-frame approach of `0.2.35`/`0.2.36` is removed.
 
+Version `0.2.38` renames stations for players: the Cashflow Controller is **Account**, the Income Station is **Passive Income**, the Smelter is **Active Income**, and the Asset Vault/Asset Warehouse is **Investment Account**. Only display text changed; internal entity IDs are unchanged, so existing saves and placed stations keep working. Debt `INTEREST OUT` is now orange (copper). The hover pane also shows each Debt Station's configured `APR` and each Investment Account's configured `Return rate`, so neither requires opening the station.
+
 ## Earned income
 
-1. Place a Coal Supply and a Smelter apart from each other. Opening the Coal Supply must show only its chest window, with no Cashflow panel. Its label reads `Coal Supply`.
-2. Link the Smelter to a paused controller, set its salary to `$500`, and route its `CASH OUT` to a Cashflow `CASH IN`. The Smelter accepts at most 50 coal. While the account is paused, loaded coal is not consumed.
-3. Start the account. With 49 coal the label reads `Coal 49/50` and nothing happens. Adding the 50th coal empties the Smelter and the heater glows; 2 seconds later 50 iron plates start leaving `CASH OUT`, and the label reads `Paid this month`.
-4. Load another 50 coal in the same month: it stays in the Smelter until the month closes, then smelts again.
-5. Take coal out of the Coal Supply; it returns to 1,000 within half a second even with no controller running.
+1. Place a Coal Supply and an Active Income station apart from each other. Opening the Coal Supply must show only its chest window, with no Cashflow panel. Its label reads `Coal Supply`.
+2. Link the Active Income station to a paused Account, set its salary to `$500`, and route its `CASH OUT` to a Cashflow `CASH IN`. It accepts at most 50 coal. While the account is paused, loaded coal is not consumed.
+3. Start the account. With 49 coal the label reads `Coal 49/50` and nothing happens. Adding the 50th coal empties the station and the heater glows; 2 seconds later 50 iron plates start leaving `CASH OUT`, and the label reads `Paid this month`.
+4. Load another 50 coal in the same month: it stays in the station until the month closes, then smelts again.
+5. Take coal out of the Coal Supply; it returns to 1,000 within half a second even with no Account running.
 
 ## One account
 
-1. Craft and place one Cashflow Controller, Income Station, Expense Station, Cashflow Station, Debt Station, and Asset Warehouse. Leave clear space around each building: Storehouse ports are two tiles from centre; Warehouse ports are four tiles from centre. The Controller has no ports. Opening it must show only the Cashflow panel, with no empty market or chest window.
-2. Open each station and select the controller. At least one Cashflow, Debt, and Asset Warehouse station is required before Start; Income and Expense are optional. Configure Income and Expense amounts, each Debt station's APR, and each Asset Warehouse's return while the controller is paused.
-3. A controller may link any number of Cashflow, Debt, and Asset Warehouse stations. On first Start, opening debt and assets are split evenly across the linked stations; any indivisible cents or plates go to the earliest linked stations. The controller totals every linked debt and asset balance. With two Cashflow stations, feed cash into one and bills into the other: they must settle against each other, and month-end surplus must leave through both stations' `SURPLUS OUT`.
-4. Cash labels (`CASH IN`, `CASH OUT`, `PAY IN`, `DEPOSIT IN`, `RETURN OUT`, `SURPLUS OUT`) are white; copper `BILLS IN`, `BORROW IN`, and `UNPAID OUT` are orange; other outputs are green. Route `CASH OUT` to `CASH IN`, `COPPER OUT` to `BILLS IN`, `SURPLUS OUT` to `DEPOSIT IN`, `UNPAID OUT` to `BORROW IN`, `INTEREST OUT` to `BILLS IN`, and `RETURN OUT` to `CASH IN`.
-5. Start the controller. Income and Expense chests fill with the month’s planned plates; each linked Cashflow Station shows the signed monthly cashflow; each Debt chest displays its own copper balance and emits interest at its own APR; each Asset Warehouse displays its iron assets and emits returns at its own rate. World labels remain compact on one line. Hovering Income, Expense, Cashflow, Debt, Asset Warehouse, Smelter, or Coal Supply must show its role-specific live metrics in the hover pane's status row, replacing `Normal`. The controller label aggregates every linked asset and debt balance, but does not show monthly cashflow. Every custom panel must close when its `Close` button is pressed.
+1. Craft and place one Account, Passive Income, Expense Station, Cashflow Station, Debt Station, and Investment Account. Leave clear space around each building: Storehouse ports are two tiles from centre; Warehouse ports are four tiles from centre. The Account has no ports. Opening it must show only the Account panel, with no empty market or chest window.
+2. Open each station and select the Account. At least one Cashflow Station, Debt Station, and Investment Account is required before Start (the error names whichever is missing); Passive Income, Active Income, and Expense are optional. Configure income and expense amounts, each Debt Station's APR, and each Investment Account's return while the Account is paused.
+3. An Account may link any number of Cashflow Stations, Debt Stations, and Investment Accounts. On first Start, opening debt and assets are split evenly across the linked stations; any indivisible cents or plates go to the earliest linked stations. The Account totals every linked debt and asset balance. With two Cashflow Stations, feed cash into one and bills into the other: they must settle against each other, and month-end surplus must leave through both stations' `SURPLUS OUT`.
+4. Cash labels (`CASH IN`, `CASH OUT`, `PAY IN`, `DEPOSIT IN`, `RETURN OUT`, `SURPLUS OUT`) are white; copper `BILLS IN`, `BORROW IN`, `UNPAID OUT`, and `INTEREST OUT` are orange. Route `CASH OUT` to `CASH IN`, `COPPER OUT` to `BILLS IN`, `SURPLUS OUT` to `DEPOSIT IN`, `UNPAID OUT` to `BORROW IN`, `INTEREST OUT` to `BILLS IN`, and `RETURN OUT` to `CASH IN`.
+5. Start the Account. Passive Income and Expense chests fill with the month’s planned plates; each linked Cashflow Station shows the signed monthly cashflow; each Debt chest displays its own copper balance and emits interest at its own APR; each Investment Account displays its iron assets and emits returns at its own rate. World labels remain compact on one line. Hovering any station must show its live metrics in the hover pane's status row, replacing `Normal`: Debt Stations include `APR`, Investment Accounts include `Return rate`. The Account label aggregates every linked asset and debt balance, but does not show monthly cashflow. Every custom panel must close when its `Close` button is pressed.
 
-Iron and copper have no account identity. A plate emitted by any controller can enter another account's station; the receiving account processes it.
+Iron and copper have no account identity. A plate emitted by any Account's stations can enter another account's station; the receiving account processes it.
 
 ## Two accounts and lifecycle
 
-1. Place a second complete station set away from the first. Configure A as `$5,000` income, `$2,000` Needs, with Debt and Asset Warehouse rates of `18%` and `7%`; configure B as `$1,000` income, `$100` Wants, with `0%` debt APR. Wire their belts separately and run a month. Each controller must retain its own balances, reports, station rates, debt, assets, and carries.
-2. Feed copper only to A's Debt input and iron only to A's Asset Warehouse input. At the next month boundary only A's debt, interest, assets, returns, and carries change.
-3. Connect A's iron output to B's Cashflow cash input. B must settle the received iron as B cash; neither controller ledger is merged.
-4. Pause A, change a Debt APR, Asset Warehouse return, or station amount, and restart it. B must continue unchanged. Attempting a configuration change while running must be rejected.
-5. Delete one linked station, pause the account, and verify Start reports the missing role. Delete A's controller: its stations remain in the world but become unlinked and inert; B continues unchanged.
-6. Save/reload, then have two players open and configure different controllers. Each GUI action must affect only its selected same-force, same-surface account.
+1. Place a second complete station set away from the first. Configure A as `$5,000` income, `$2,000` Needs, with Debt and Investment Account rates of `18%` and `7%`; configure B as `$1,000` income, `$100` Wants, with `0%` debt APR. Wire their belts separately and run a month. Each Account must retain its own balances, reports, station rates, debt, assets, and carries.
+2. Feed copper only to A's Debt input and iron only to A's Investment Account input. At the next month boundary only A's debt, interest, assets, returns, and carries change.
+3. Connect A's iron output to B's Cashflow cash input. B must settle the received iron as B cash; neither Account's ledger is merged.
+4. Pause A, change a Debt APR, Investment Account return, or station amount, and restart it. B must continue unchanged. Attempting a configuration change while running must be rejected.
+5. Delete one linked station, pause the account, and verify Start reports the missing station. Delete A's Account: its stations remain in the world but become unlinked and inert; B continues unchanged.
+6. Save/reload, then have two players open and configure different Accounts. Each GUI action must affect only its selected same-force, same-surface account.

@@ -1,6 +1,6 @@
 # Third-party artwork
 
-## Sosciencity computing-center artwork (Cashflow Controller)
+## Sosciencity computing-center artwork (Account)
 
 `graphics/computing-center/computing-center.png`, `computing-center-shadowmap.png`, `computing-center-lightmap.png`, `computing-center-glow.png`, and `computing-center-icon.png` are the "Computing Center" artwork from [Sosciencity](https://mods.factorio.com/mod/sosciencity) ([graphics source](https://git.gay/tirisabella/sosciencity-graphics)) by tirisabella, Johanna Spieker and _traum, licensed under [Creative Commons Attribution 4.0 International (CC BY 4.0)](https://creativecommons.org/licenses/by/4.0/).
 

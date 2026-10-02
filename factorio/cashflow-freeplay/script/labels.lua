@@ -10,11 +10,14 @@ local function destroy(machine)
   for _, label in pairs(machine.port_labels or {}) do if label.valid then label.destroy() end end
   machine.label, machine.port_labels = nil, {}
 end
--- Display title for a role; "vault" stations are branded Asset Warehouse.
+-- Short world-label title for a role, and the full entity name used for panel captions.
+-- Internal role keys (controller/income/vault/smelter) are unchanged so existing saves load.
+local TITLES = { income = "Passive Income", smelter = "Active Income", vault = "Investment Account" }
+local DISPLAY_NAMES = { controller = "Account", income = "Passive Income", expense = "Expense Station", cashflow = "Cashflow Station", debt = "Debt Station", vault = "Investment Account", smelter = "Active Income" }
 local function title(role)
-  if role == "vault" then return "Asset Warehouse" end
-  return role:sub(1, 1):upper() .. role:sub(2)
+  return TITLES[role] or role:sub(1, 1):upper() .. role:sub(2)
 end
+function M.display_name(role) return DISPLAY_NAMES[role] end
 -- Per-role label tint.
 
 local COLORS = {
@@ -117,7 +120,12 @@ end
 -- Live, role-specific metrics for the station's hover pane: linked account plus its own figures.
 local function update_status(machine, cf)
   local lines = { "Account: " .. (cf and cf.name or "Unlinked") }
-  for _, detail in ipairs(M.machine_details(machine, cf)) do lines[#lines + 1] = detail end
+  local details = M.machine_details(machine, cf)
+  local rate = machine.role == "debt" and "APR " .. machine.config.apr .. "%" or machine.role == "vault" and "Return rate " .. machine.config.asset_return .. "%" or nil
+  for i, detail in ipairs(details) do
+    lines[#lines + 1] = detail
+    if i == 1 and rate then lines[#lines + 1] = rate end
+  end
   if machine.role == "expense" then lines[#lines + 1] = "Category: " .. machine.config.category end
   set_status(machine.anchor, cf and defines.entity_status_diode.green or defines.entity_status_diode.yellow, lines)
 end

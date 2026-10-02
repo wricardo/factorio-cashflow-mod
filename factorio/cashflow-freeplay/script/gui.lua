@@ -2,6 +2,7 @@
 -- Exactly one panel is shown per player at a time; its `tags` identify whether it's bound to
 -- a controller or a machine so control.lua's gui_* event handlers know where edits go.
 local acc = require("script.accounting")
+local labels = require("script.labels")
 local M = {}
 local ROOT = "cf_freeplay_panel"
 
@@ -33,7 +34,7 @@ end
 -- Start/Pause button. Fields are read-only while the account is running.
 function M.open_controller(p, cf)
   close(p)
-  local root = p.gui.left.add { type = "frame", name = ROOT, direction = "vertical", caption = "Cashflow: " .. cf.name, tags = { controller_unit_number = cf.controller.unit_number } }
+  local root = p.gui.left.add { type = "frame", name = ROOT, direction = "vertical", caption = "Account: " .. cf.name, tags = { controller_unit_number = cf.controller.unit_number } }
   add_close(root)
   local editable = not cf.running
   add_field(root, "account_name", "Account name", cf.name, root.tags, editable)
@@ -50,7 +51,7 @@ end
 -- for expense). Disabled while the linked controller is running.
 function M.open_machine(p, machine, controllers)
   close(p)
-  local root = p.gui.left.add { type = "frame", name = ROOT, direction = "vertical", caption = machine.role .. " station", tags = { machine_unit_number = machine.unit_number } }
+  local root = p.gui.left.add { type = "frame", name = ROOT, direction = "vertical", caption = labels.display_name(machine.role), tags = { machine_unit_number = machine.unit_number } }
   add_close(root)
   local owner = machine.controller_unit_number and controllers[machine.controller_unit_number]
   local editable = not owner or not owner.running
@@ -69,7 +70,7 @@ function M.open_machine(p, machine, controllers)
     root.add { type = "label", caption = "Load " .. acc.SMELTER_COAL_PER_MONTH .. " coal each month; smelting takes 2 seconds." }
   end
   if machine.role == "debt" then add_field(root, "apr", "Debt APR (%)", tostring(machine.config.apr), root.tags, editable) end
-  if machine.role == "vault" then add_field(root, "return", "Asset return (%)", tostring(machine.config.asset_return), root.tags, editable) end
+  if machine.role == "vault" then add_field(root, "return", "Investment return (%)", tostring(machine.config.asset_return), root.tags, editable) end
   if machine.role == "expense" then
     root.add { type = "label", caption = "Expense category" }
     root.add { type = "drop-down", name = "category", items = { "needs", "wants" }, selected_index = machine.config.category == "wants" and 2 or 1, tags = root.tags, enabled = editable }

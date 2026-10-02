@@ -2,6 +2,7 @@
 -- Start/Pause gating, and the monthly income/expense planning + buffer fill/restore used by
 -- control.lua's sweep loop. Actual belt/inventory work is delegated to stations.lua.
 local acc = require("script.accounting")
+local labels = require("script.labels")
 local stations = require("script.stations")
 local M = {}
 
@@ -71,13 +72,13 @@ function M.normalize(cf)
   cf.out = cf.out or stations.new_outputs()
   stations.refresh_totals(cf)
 end
--- Start is blocked unless at least one Cashflow, Debt, and Asset Warehouse station is linked.
--- Returns false + a human-readable reason naming the missing roles.
+-- Start is blocked unless at least one Cashflow Station, Debt Station, and Investment Account is
+-- linked. Returns false + a human-readable reason naming the missing stations.
 
 function M.can_start(cf)
   local missing = {}
-  for _, role in ipairs({ "cashflow", "debt", "vault" }) do if #cf.entities[role] == 0 then missing[#missing + 1] = role end end
-  if #missing > 0 then return false, "Missing linked " .. table.concat(missing, ", ") .. " station." end
+  for _, role in ipairs({ "cashflow", "debt", "vault" }) do if #cf.entities[role] == 0 then missing[#missing + 1] = labels.display_name(role) end end
+  if #missing > 0 then return false, "Missing linked " .. table.concat(missing, ", ") .. "." end
   return true
 end
 -- Plates each income/expense station must emit this month, rounded up from its monthly cents.
