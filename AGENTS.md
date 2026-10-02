@@ -50,6 +50,7 @@ README.md  AGENTS.md  package.json                              not shipped
 - `changelog.txt` — player-facing version history in Factorio's changelog format.
 - `tests/accounting_test.lua`, `split_test.lua`, `freeplay_test.lua`, `fake_factorio.lua`, `run.lua` — local tests.
 - `tests/README.md` — in-game manual acceptance checklist.
+- `.github/workflows/release.yml` — tag-triggered test, package, and GitHub release publication.
 
 ## Development Commands
 
@@ -60,7 +61,7 @@ npm test
 npm run package
 ```
 
-The test command runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` against the repository root. Packaging produces `dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory. `scripts/install-latest.sh` downloads the matching asset from the newest GitHub release and installs it on macOS; publish that script and the package zip with each player-facing release.
+The test command runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` against the repository root. Packaging produces `dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory. `scripts/install-latest.sh` queries the newest GitHub release and installs the matching zip on macOS. Pushing a `v<info.json version>` tag runs `.github/workflows/release.yml`, which tests, packages, and publishes that zip.
 
 **Always install after finishing a change to the mod.** Bump `info.json`'s version, add a matching `changelog.txt` entry, package, then copy the new zip into the user's mods folder and delete any other `cashflow-freeplay_*.zip` there, so Factorio loads exactly one version:
 

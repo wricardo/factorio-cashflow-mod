@@ -1,0 +1,53 @@
+name: Release Factorio mod
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out the release tag
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Lua
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes lua5.2
+
+      - name: Verify the tag matches info.json
+        id: version
+        run: |
+          version="$(jq -r .version info.json)"
+          expected_tag="v$version"
+          test "$GITHUB_REF_NAME" = "$expected_tag"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
+
+      - name: Run the test suite
+        run: lua5.2 tests/run.lua . accounting_test split_test freeplay_test
+
+      - name: Package the mod
+        run: npm run package
+
+      - name: Publish GitHub release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          asset="dist/cashflow-freeplay_${VERSION}.zip"
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" "$asset" --clobber
+          else
+            gh release create "$TAG" "$asset" \
+              --title "Cashflow Freeplay $VERSION" \
+              --generate-notes
+          fi

@@ -78,6 +78,13 @@ npm run package   # builds dist/cashflow-freeplay_<version>.zip
 
 Both need `lua` (5.4 is fine; the mod itself sticks to Lua 5.2 syntax) and `jq` and `zip` for packaging. The in-game acceptance checklist is in [`tests/README.md`](tests/README.md); [`AGENTS.md`](AGENTS.md) describes the architecture.
 
+### Publishing a release
+
+1. Bump `info.json` and add the matching `changelog.txt` entry.
+2. Commit the release, then create and push a tag matching the version: `git tag v<version> && git push origin v<version>`.
+3. The [release workflow](.github/workflows/release.yml) runs the Lua tests, verifies that the tag matches `info.json`, packages the mod, and attaches the zip to a GitHub release. The installer always downloads that newest published release.
+
+
 ```
 info.json  changelog.txt  control.lua  data.lua  settings.lua
 locale/      English strings, including every panel caption
