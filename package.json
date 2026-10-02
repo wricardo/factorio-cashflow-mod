@@ -2,7 +2,7 @@
   "name": "cashflow-freeplay",
   "private": true,
   "scripts": {
-    "test": "lua factorio/tests/run.lua factorio/cashflow-freeplay accounting_test split_test freeplay_test",
-    "package": "bash factorio/scripts/package.sh cashflow-freeplay"
+    "test": "lua tests/run.lua . accounting_test split_test freeplay_test",
+    "package": "bash scripts/package.sh"
   }
 }

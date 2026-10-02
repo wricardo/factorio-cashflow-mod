@@ -1,5 +1,5 @@
 local here = (arg and arg[0] or ""):match("(.*/)") or "./"
-local source = arg[1] or "factorio/cashflow-freeplay"
+local source = arg[1] or "."
 package.path = source .. "/?.lua;" .. here .. "?.lua;" .. package.path
 
 local files = {}

@@ -1,0 +1,154 @@
+---------------------------------------------------------------------------------------------------
+Version: 0.2.46
+  Info:
+    - The mod now ships a changelog, shown in Factorio's mod list. No gameplay changes.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.45
+  Changes:
+    - Income, Active Income and Expense stations are limited to $20,000 a month at any month length. The limit used to shrink with shorter months.
+    - Plates still leave a station at belt speed, so a $20,000 station needs about 45 seconds to empty a blue belt; in shorter months leftover income plates carry over and unsent bills are added to debt.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.44
+  Features:
+    - Station amounts, Active Income salary, Debt APR, Investment return, Expense Needs/Wants and the Account name can be edited while the Account runs. Amounts and rates apply from the next month.
+  Changes:
+    - Linking and unlinking a station, and the starting debt and assets, still require pausing the Account.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.43
+  Gui:
+    - The Account is a centered, draggable dialog closed by Esc, E or its X button, with a live dashboard: month progress, assets, debt, net worth, monthly cashflow and how much of the monthly expenses investment returns cover.
+    - Start checklist: Start stays disabled until a Cashflow Station, Debt Station and Investment Account are linked. Starting debt and assets become locked text after the first Start.
+    - Station panels close with the vanilla window they sit beside.
+    - Number fields accept digits only and show a $ or % suffix. Validation errors appear inside the panel instead of chat.
+    - Expense Needs/Wants is a switch. The account picker shows each account's position, and a Locate button prints a map link.
+    - Each station panel has a collapsible "how to connect" section, remembered per player.
+    - Yearly reports are a table.
+  Features:
+    - Port labels carry the iron or copper plate icon and show only in alt mode.
+    - Passive Income and Expense labels show how many plates are left to send.
+    - Closing a month floats a cash in / bills / paid summary above each Cashflow Station.
+  Changes:
+    - World labels and panels use the same station names.
+    - Panel text moved to the locale file.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.42
+  Changes:
+    - Passive Income and Expense stations release their whole planned monthly total as soon as the month starts instead of pacing it across the month. The belt carries the plates away at its own speed.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.41
+  Changes:
+    - A newly placed Debt Station has PAY IN on top and BORROW IN below it. Existing Debt Stations keep their ports so connected belts keep their meaning.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.40
+  Features:
+    - Percent Splitter: a vanilla splitter with an adjustable share of items leaving the left output. Accurate to about 2 percentage points on a saturated belt.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.39
+  Features:
+    - Yearly report every 12th month with income, expenses, assets, debt and net worth, announced in chat and kept in the Account panel.
+    - Alert and red hover-pane status when unpaid bills cannot leave UNPAID OUT for 5 seconds.
+    - Month length is configurable with the Month length (seconds) runtime setting.
+  Changes:
+    - Removed the unused win condition.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.38
+  Changes:
+    - Stations renamed for players: Account, Passive Income, Active Income, Investment Account. Internal IDs are unchanged, so existing saves keep working.
+    - Debt INTEREST OUT is orange (copper).
+    - The hover pane shows each Debt Station's APR and each Investment Account's return rate.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.37
+  Features:
+    - Live station metrics in the status row of Factorio's hover pane. The status light is green when linked and yellow when unlinked.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.35
+  Changes:
+    - Restored compact one-line station labels.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.34
+  Changes:
+    - Station title and statistics stack above each building instead of across its artwork.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.33
+  Changes:
+    - Station title and each statistic are separate floating texts, because embedded newlines render as spaces.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.32
+  Changes:
+    - Station titles are separated from their statistics by a blank line.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.31
+  Changes:
+    - Cashflow SURPLUS OUT is white (cash); UNPAID OUT is orange (copper).
+---------------------------------------------------------------------------------------------------
+Version: 0.2.30
+  Changes:
+    - Removed monthly cashflow from the Account label. It stays on every linked Cashflow Station.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.29
+  Changes:
+    - Debt PAY IN, Investment Account DEPOSIT IN and RETURN OUT use the white cash-label colour. BORROW IN stays orange.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.28
+  Features:
+    - The Account label shows net worth: total assets minus total debt, signed.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.27
+  Changes:
+    - Iron-plate routing is called cash: Income and Smelter outputs are white CASH OUT and Cashflow CASH IN is white. BILLS IN stays orange.
+    - Each linked Cashflow Station shows the signed monthly cashflow.
+  Gui:
+    - Every configuration panel has a Close button.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.26
+  Graphics:
+    - Original generated icons for the seven non-Account stations.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.25
+  Graphics:
+    - Every station has its own icon and its own crafting row below vanilla Storage.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.24
+  Features:
+    - Earned income: a Coal Supply that refills itself and a Smelter that pays a monthly salary as iron plates after smelting one 50-coal batch for 2 seconds.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.23
+  Changes:
+    - The Account is a 3x3 Computing Center with no inventory. Existing controllers are replaced in place; anything stored in an old controller chest is spilled beside it.
+    - Income and Expense stations are capped at $20,000 a month.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.22
+  Features:
+    - Any number of Cashflow Stations per Account. Settlement is pooled per Account and surplus and unpaid plates are spread round-robin across every station's outputs.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.21
+  Bugfixes:
+    - The monthly cashflow figure shows last month's actual net settlement (cash in minus bills in), so an Account living on investment returns no longer shows $0.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.20
+  Changes:
+    - Elapsed time is shown as a 12-month calendar (Year 1 Month 1).
+---------------------------------------------------------------------------------------------------
+Version: 0.2.19
+  Changes:
+    - A Debt Station's copper-plate count is its debt. Adding or removing copper changes the debt, just as iron changes an Investment Account's assets.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.18
+  Features:
+    - Cashflow Stations gain a second CASH IN and a second BILLS IN port, added in place to existing stations.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.17
+  Gui:
+    - Debt Stations show their debt and monthly interest; Investment Accounts show their assets and monthly return.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.16
+  Features:
+    - Multiple Debt Stations and Investment Accounts per Account, each with its own APR or return. Existing accounts migrate automatically.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.15
+  Graphics:
+    - Every station is a Warehousing-derived building: Income, Expense and Debt are 3x3 Storehouses; Cashflow and Investment Account are 6x6 Warehouses. Existing stations must be mined and re-placed before reconnecting their ports.
+---------------------------------------------------------------------------------------------------
+Version: 0.2.0
+  Features:
+    - First Factorio mod: expenses flow as copper bills.

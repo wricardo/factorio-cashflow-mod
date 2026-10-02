@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository's primary game module is the Factorio 2.0 **Cashflow Freeplay** mod in `factorio/cashflow-freeplay/`. It adds player-placeable, Account-owned personal-finance stations to ordinary Freeplay worlds:
+This repository is the Factorio 2.0 **Cashflow Freeplay** mod; the repository root is the mod root (`info.json`, `control.lua`, `data.lua`, ...). It adds player-placeable, Account-owned personal-finance stations to ordinary Freeplay worlds:
 
 - Iron plates represent $10 cash.
 - Copper plates represent $10 bills/debt.
@@ -13,9 +13,21 @@ This repository's primary game module is the Factorio 2.0 **Cashflow Freeplay** 
 
 Player-facing names differ from internal IDs, which stay unchanged so existing saves load: Account = `controller`, Passive Income = `income`, Active Income = `smelter`, Investment Account = `vault`. `script/labels.lua` holds the display-name table; change names there and in `locale/en/`.
 
+## Layout
+
+```
+info.json  changelog.txt  control.lua  data.lua  settings.lua   mod entry points (shipped)
+locale/  migrations/  script/  graphics/  THIRD_PARTY_LICENSES.md   shipped
+tests/      fake Factorio runtime, test suites, and the manual in-game checklist (README.md); not shipped
+scripts/    package.sh; not shipped
+README.md  AGENTS.md  package.json                              not shipped
+```
+
+`scripts/package.sh` copies an explicit list of shipped files into `dist/cashflow-freeplay_<version>/`; add new top-level shipped files to that list.
+
 ## Architecture
 
-- **Data stage:** `factorio/cashflow-freeplay/data.lua` declares placeable controller/station prototypes. The controller is a 3×3 `market` (no inventory) drawn with Sosciencity's CC BY 4.0 Computing Center art; the five storage stations are chests with licensed Warehousing art; the Smelter (1-slot chest) and Coal Supply (20-slot chest) reuse vanilla electric-furnace and electric-mining-drill art.
+- **Data stage:** `data.lua` declares placeable controller/station prototypes. The controller is a 3×3 `market` (no inventory) drawn with Sosciencity's CC BY 4.0 Computing Center art; the five storage stations are chests with licensed Warehousing art; the Smelter (1-slot chest) and Coal Supply (20-slot chest) reuse vanilla electric-furnace and electric-mining-drill art.
 - **Runtime stage:** `control.lua` registers entities, links stations to controllers, owns persistent accounts in `storage.cf_freeplay`, and drives the monthly simulation without restricting vanilla Freeplay content.
 - **Station layout:** `script/station_layout.lua` creates hidden helper ports outside building footprints: Passive Income, Expense, Debt, and Active Income are 3×3 Storehouse-sized; Cashflow and Investment Account are 6×6 Warehouses. The Account and Coal Supply have no ports; Coal Supply is not a linkable role and is tracked only in `storage.cf_freeplay.coal_supplies` for refilling.
 - **Domain boundary:** `script/accounting.lua` has no Factorio API dependency and owns integer-cent money math, month close calculations, and the yearly report summary. Keep Factorio integration in `control.lua`, `stations.lua`, `pulse.lua`, and `rules.lua`.
@@ -26,17 +38,18 @@ Player-facing names differ from internal IDs, which stay unchanged so existing s
 
 ## Key Files
 
-- `factorio/cashflow-freeplay/control.lua` — lifecycle, entity registration, account linking, events.
-- `factorio/cashflow-freeplay/data.lua` — placeable prototypes and Warehouse sprite setup.
-- `factorio/cashflow-freeplay/script/station_layout.lua` — helper-port placement and cleanup.
-- `factorio/cashflow-freeplay/script/accounting.lua` — pure finance engine.
-- `factorio/cashflow-freeplay/script/stations.lua`, `pulse.lua`, `account.lua` — simulation orchestration.
-- `factorio/cashflow-freeplay/script/rules.lua`, `settings.lua` — month-length setting and its derived limits.
-- `factorio/cashflow-freeplay/script/labels.lua`, `gui.lua` — player-facing presentation.
-- `factorio/cashflow-freeplay/THIRD_PARTY_LICENSES.md` — required Sosciencity (CC BY 4.0) and Warehousing (MIT) artwork attribution.
-- `factorio/cashflow-freeplay/migrations/` — JSON prototype renames for saves from older versions; `control.lua` finishes each one in `on_configuration_changed`.
-- `factorio/tests/accounting_test.lua`, `freeplay_test.lua`, `fake_factorio.lua`, `run.lua` — local tests.
-- `factorio/cashflow-freeplay/TESTING.md` — in-game manual acceptance checklist.
+- `control.lua` — lifecycle, entity registration, account linking, events.
+- `data.lua` — placeable prototypes and Warehouse sprite setup.
+- `script/station_layout.lua` — helper-port placement and cleanup.
+- `script/accounting.lua` — pure finance engine.
+- `script/stations.lua`, `pulse.lua`, `account.lua` — simulation orchestration.
+- `script/rules.lua`, `settings.lua` — month-length setting.
+- `script/labels.lua`, `gui.lua` — player-facing presentation.
+- `THIRD_PARTY_LICENSES.md` — required Sosciencity (CC BY 4.0) and Warehousing (MIT) artwork attribution.
+- `migrations/` — JSON prototype renames for saves from older versions; `control.lua` finishes each one in `on_configuration_changed`.
+- `changelog.txt` — player-facing version history in Factorio's changelog format.
+- `tests/accounting_test.lua`, `split_test.lua`, `freeplay_test.lua`, `fake_factorio.lua`, `run.lua` — local tests.
+- `tests/README.md` — in-game manual acceptance checklist.
 
 ## Development Commands
 
@@ -47,19 +60,19 @@ npm test
 npm run package
 ```
 
-The test command runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` against `factorio/cashflow-freeplay`. Packaging produces `factorio/dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory.
+The test command runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` against the repository root. Packaging produces `dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory.
 
-**Always install after finishing a change to the mod.** Bump `info.json`'s version, package, then copy the new zip into the user's mods folder and delete any other `cashflow-freeplay_*.zip` there, so Factorio loads exactly one version:
+**Always install after finishing a change to the mod.** Bump `info.json`'s version, add a matching `changelog.txt` entry, package, then copy the new zip into the user's mods folder and delete any other `cashflow-freeplay_*.zip` there, so Factorio loads exactly one version:
 
 ```bash
 MODS="$HOME/Library/Application Support/factorio/mods"
-cp factorio/dist/cashflow-freeplay_<version>.zip "$MODS/"
+cp dist/cashflow-freeplay_<version>.zip "$MODS/"
 find "$MODS" -name 'cashflow-freeplay_*.zip' ! -name 'cashflow-freeplay_<version>.zip' -delete
 ```
 
 `cashflow-freeplay` must stay `"enabled": true` in `$MODS/mod-list.json`. Report the installed version to the user.
 
-The fake-Factorio suite is the primary local proof. Factorio 2.0.x is also installed at `/Applications/factorio.app`: for data-stage or save-migration changes, run it headless with an isolated `--config` (write-data under `/tmp`) and `--mod-directory`, using `--create <save>` and `--benchmark <save> --benchmark-ticks N`. A throwaway probe mod can `log()` state. Apart from installing the mod zip as above, never touch the user's real Factorio profile (saves, settings, other mods). Perform the relevant manual steps in `factorio/cashflow-freeplay/TESTING.md` for rendering, GUI, collision, and belt verification.
+The fake-Factorio suite is the primary local proof. Factorio 2.0.x is also installed at `/Applications/factorio.app`: for data-stage or save-migration changes, run it headless with an isolated `--config` (write-data under `/tmp`) and `--mod-directory`, using `--create <save>` and `--benchmark <save> --benchmark-ticks N`. A throwaway probe mod can `log()` state. Apart from installing the mod zip as above, never touch the user's real Factorio profile (saves, settings, other mods). Perform the relevant manual steps in `tests/README.md` for rendering, GUI, collision, and belt verification.
 
 ## Conventions
 

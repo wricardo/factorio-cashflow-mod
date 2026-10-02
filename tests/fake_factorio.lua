@@ -74,7 +74,7 @@ end
 local locale
 local function load_locale()
   locale = {}
-  local path = ((arg and arg[1]) or "factorio/cashflow-freeplay") .. "/locale/en/cashflow-freeplay.cfg"
+  local path = ((arg and arg[1]) or ".") .. "/locale/en/cashflow-freeplay.cfg"
   local file = assert(io.open(path, "r"))
   local section
   for line in file:lines() do
