@@ -1,4 +1,8 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.2.47
+  Graphics:
+    - Added an original industrial Cashflow Freeplay thumbnail.
+---------------------------------------------------------------------------------------------------
 Version: 0.2.46
   Info:
     - The mod now ships a changelog, shown in Factorio's mod list. No gameplay changes.
