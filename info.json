@@ -1,7 +1,7 @@
 {
   "name": "cashflow-freeplay",
-  "version": "0.2.48",
-  "title": "Cashflow Freeplay",
+  "version": "0.2.49",
+  "title": "Cashflow",
   "author": "wricardo",
   "factorio_version": "2.0",
   "dependencies": ["base >= 2.0"],

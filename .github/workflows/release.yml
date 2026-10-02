@@ -48,6 +48,6 @@ jobs:
             gh release upload "$TAG" "$asset" --clobber
           else
             gh release create "$TAG" "$asset" \
-              --title "Cashflow Freeplay $VERSION" \
+              --title "Cashflow $VERSION" \
               --generate-notes
           fi

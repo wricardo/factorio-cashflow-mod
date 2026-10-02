@@ -1,4 +1,8 @@
 ---------------------------------------------------------------------------------------------------
+Version: 0.2.49
+  Info:
+    - Renamed the mod to Cashflow. Save-compatible internal names are unchanged.
+---------------------------------------------------------------------------------------------------
 Version: 0.2.48
   Changes:
     - Month-close messages now show only the year and month, account net worth, and cashflow.

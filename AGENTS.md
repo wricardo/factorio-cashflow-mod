@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-This repository is the Factorio 2.0 **Cashflow Freeplay** mod; the repository root is the mod root (`info.json`, `control.lua`, `data.lua`, ...). It adds player-placeable, Account-owned personal-finance stations to ordinary Freeplay worlds:
+This repository is the Factorio 2.0 **Cashflow** mod; the repository root is the mod root (`info.json`, `control.lua`, `data.lua`, ...). It adds player-placeable, Account-owned personal-finance stations to ordinary Freeplay worlds:
 
 - Iron plates represent $10 cash.
 - Copper plates represent $10 bills/debt.

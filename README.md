@@ -1,4 +1,4 @@
-# Cashflow Freeplay
+# Cashflow
 
 A Factorio 2.0 mod that adds a personal-finance game to ordinary Freeplay. Iron plates are cash, copper plates are bills and debt, and you run your money with belts.
 
@@ -11,7 +11,7 @@ Paste this into Terminal to install the newest published mod release:
 curl -fsSL https://raw.githubusercontent.com/wricardo/factorio-cashflow-mod/main/scripts/install-latest.sh | bash
 ```
 
-It replaces older Cashflow Freeplay zips, enables the mod, and prints the installed version. Start or restart Factorio afterward.
+It replaces older Cashflow zips, enables the mod, and prints the installed version. Start or restart Factorio afterward.
 
 
 ## How it works
@@ -68,7 +68,7 @@ Defaults: $18,000 starting debt at 18% APR, $12,000 starting assets at 7% return
 
 ## Installing
 
-For details, the command above downloads the public installer from this repository's `main` branch. It requires the built-in `curl` and `unzip` commands, queries GitHub for the newest published release, validates that the downloaded zip is a Cashflow Freeplay archive, then installs it in `~/Library/Application Support/factorio/mods`. Set `FACTORIO_MODS_DIR` first to use a different Factorio mods directory. Requires Factorio 2.0 and the base game; Space Age is not needed.
+For details, the command above downloads the public installer from this repository's `main` branch. It requires the built-in `curl` and `unzip` commands, queries GitHub for the newest published release, validates that the downloaded zip is a Cashflow archive, then installs it in `~/Library/Application Support/factorio/mods`. Set `FACTORIO_MODS_DIR` first to use a different Factorio mods directory. Requires Factorio 2.0 and the base game; Space Age is not needed.
 
 To inspect the script before running it, open [`scripts/install-latest.sh`](scripts/install-latest.sh). To build from source instead, run `npm run package` and copy `dist/cashflow-freeplay_<version>.zip` to Factorio's `mods` folder.
 

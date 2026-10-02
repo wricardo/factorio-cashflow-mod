@@ -18,7 +18,7 @@ Copy `dist/cashflow-freeplay_<version>.zip` to Factorio's `mods` directory, enab
 
 ## Unrestricted Freeplay
 
-Cashflow Freeplay does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
+Cashflow does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
 
 ## Panels, labels, and editing
 
