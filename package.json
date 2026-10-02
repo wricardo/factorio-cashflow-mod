@@ -1,10 +1,8 @@
 {
-  "name": "cash-flow-animation",
+  "name": "cashflow-freeplay",
   "private": true,
-  "type": "module",
   "scripts": {
-    "test": "node --test",
-    "test:factorio": "lua factorio/tests/run.lua factorio/cashflow-freeplay accounting_test split_test freeplay_test",
-    "package:factorio": "bash factorio/scripts/package.sh cashflow-freeplay"
+    "test": "lua factorio/tests/run.lua factorio/cashflow-freeplay accounting_test split_test freeplay_test",
+    "package": "bash factorio/scripts/package.sh cashflow-freeplay"
   }
 }

@@ -8,12 +8,12 @@ end
 
 local T = {}
 
--- Same numbers as the default scenario in simulation.js / readme.md.
-function T.debt_interest_matches_simulation()
+-- Default scenario: $18,000 debt at 18% APR and $12,000 assets at 7% return.
+function T.debt_interest_is_a_twelfth_of_the_annual_rate()
   eq(acc.monthly_amount(1800000, 18), 27000)
 end
 
-function T.asset_return_matches_simulation()
+function T.asset_return_is_a_twelfth_of_the_annual_rate()
   eq(acc.monthly_amount(1200000, 7), 7000)
 end
 

@@ -3,7 +3,7 @@
 ## Install
 
 ```bash
-npm run package:factorio
+npm run package
 ```
 
 Copy `factorio/dist/cashflow-freeplay_0.2.45.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.

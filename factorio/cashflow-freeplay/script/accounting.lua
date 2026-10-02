@@ -15,7 +15,7 @@ M.UNPAID_ALERT_TICKS = 300
 M.SMELTER_COAL_PER_MONTH = 50
 M.SMELT_TICKS = 120
 
--- Matches Math.round in simulation.js for the non-negative values used here.
+-- Rounds half up for the non-negative values used here.
 function M.round(v)
   return math.floor(v + 0.5)
 end

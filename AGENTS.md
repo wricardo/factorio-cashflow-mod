@@ -13,8 +13,6 @@ This repository's primary game module is the Factorio 2.0 **Cashflow Freeplay** 
 
 Player-facing names differ from internal IDs, which stay unchanged so existing saves load: Account = `controller`, Passive Income = `income`, Active Income = `smelter`, Investment Account = `vault`. `script/labels.lua` holds the display-name table; change names there and in `locale/en/`.
 
-The root browser simulator is separate and shares no code with the mod.
-
 ## Architecture
 
 - **Data stage:** `factorio/cashflow-freeplay/data.lua` declares placeable controller/station prototypes. The controller is a 3×3 `market` (no inventory) drawn with Sosciencity's CC BY 4.0 Computing Center art; the five storage stations are chests with licensed Warehousing art; the Smelter (1-slot chest) and Coal Supply (20-slot chest) reuse vanilla electric-furnace and electric-mining-drill art.
@@ -45,11 +43,11 @@ The root browser simulator is separate and shares no code with the mod.
 From repository root:
 
 ```bash
-npm run test:factorio
-npm run package:factorio
+npm test
+npm run package
 ```
 
-The test command runs `accounting_test.lua` and `freeplay_test.lua` against `factorio/cashflow-freeplay`. Packaging produces `factorio/dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory.
+The test command runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` against `factorio/cashflow-freeplay`. Packaging produces `factorio/dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory.
 
 **Always install after finishing a change to the mod.** Bump `info.json`'s version, package, then copy the new zip into the user's mods folder and delete any other `cashflow-freeplay_*.zip` there, so Factorio loads exactly one version:
 
