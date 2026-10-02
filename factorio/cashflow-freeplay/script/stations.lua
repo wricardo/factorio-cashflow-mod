@@ -103,11 +103,15 @@ end
 -- Month close: feeds `waiting` copper (unpaid bills + prior interest) into debt stations'
 -- chests, accrues interest per debt station and returns per vault station (each with its own
 -- carried fraction), and refreshes totals. Returns combined interest/return cents and plates.
+-- A rate edited while the account was running is held in `applied_apr`/`applied_return` so the
+-- month that just ended uses the rate it started with; closing clears it, so the edit applies
+-- to the next close.
 function M.close_finance(cf, waiting)
   M.distribute_debt(cf, waiting)
   local interest_cents, interest_plates, return_cents, return_plates = 0, 0, 0, 0
   for _, machine in ipairs(cf.entities.debt) do
-    local cents = acc.monthly_amount(machine.opening_debt_cents or 0, machine.config.apr)
+    local cents = acc.monthly_amount(machine.opening_debt_cents or 0, machine.applied_apr or machine.config.apr)
+    machine.applied_apr = nil
     local plates, carry = acc.to_plates(cents, machine.interest_carry_cents or 0)
     machine.interest_carry_cents, machine.pending_interest = carry, (machine.pending_interest or 0) + plates
     local inv = inventory(machine.anchor)
@@ -115,7 +119,8 @@ function M.close_finance(cf, waiting)
     interest_cents, interest_plates = interest_cents + cents, interest_plates + plates
   end
   for _, machine in ipairs(cf.entities.vault) do
-    local cents = acc.monthly_amount(machine.opening_principal_cents or 0, machine.config.asset_return)
+    local cents = acc.monthly_amount(machine.opening_principal_cents or 0, machine.applied_return or machine.config.asset_return)
+    machine.applied_return = nil
     local plates, carry = acc.to_plates(cents, machine.return_carry_cents or 0)
     machine.return_carry_cents, machine.pending_returns = carry, (machine.pending_returns or 0) + plates
     local inv = inventory(machine.anchor)

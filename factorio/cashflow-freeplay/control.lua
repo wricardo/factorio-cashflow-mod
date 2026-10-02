@@ -318,9 +318,16 @@ script.on_event(defines.events.on_gui_click, function(e)
   if cf.running then cf.running = false else local ok, reason = account.start(cf, stations); if not ok then return show_error(p, reason) end end
   labels.account(cf); gui.open_controller(p, cf)
 end)
+-- Sets a Debt APR or Investment return. While the account runs the new rate applies from next
+-- month: the rate used at the coming month close is frozen in `machine[applied]` (cleared at
+-- close, see stations.close_finance). When paused it applies to this month as before.
+local function set_rate(machine, owner, field, applied, n)
+  if owner and owner.running then machine[applied] = machine[applied] or machine.config[field] else machine[applied] = nil end
+  machine.config[field] = n
+end
 -- Enter/confirm on a textfield: validates and commits name/starting-debt/starting-assets
--- (controller, only before first Start) or per-machine amount/APR/return (machine, only
--- while its owner is paused or unlinked).
+-- (controller; the starting balances only before first Start) or per-machine amount/APR/return.
+-- Machine values may change while the account runs and apply from next month.
 script.on_event(defines.events.on_gui_confirmed, function(e)
   local p, el = game.get_player(e.player_index), e.element
   if not (el and el.valid) then return end
@@ -329,7 +336,7 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
   if splitter then return edit_splitter(p, splitter, el, true) end
   local cf = controller_from_tags(el.tags)
   if cf then
-    if not player_can_change(p, cf) then return show_error(p, "Pause the account before changing configuration.") end
+    if not player_can_access(p, cf) then return show_error(p, "Account is unavailable.") end
     local value = el.text
     if el.name == "account_name" then if value == "" or #value > 64 then return show_error(p, "Name must contain 1-64 characters.") end; cf.name = value
     elseif el.name == "debt" and not cf.started then local n = decimal(value, true); if not n then return show_error(p, "Starting debt must be a nonnegative number.") end; cf.config.starting_debt_cents = n
@@ -338,7 +345,7 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
   end
   local machine = machine_from_tags(el.tags)
   local owner = machine and state().accounts[machine.controller_unit_number]
-  if not (machine and (not owner or player_can_change(p, owner))) then return end
+  if not (machine and (not owner or player_can_access(p, owner))) then return end
   local n = el.name == "amount" and decimal(el.text, true) or decimal(el.text)
   if not n then return show_error(p, "Enter a nonnegative number.") end
   if el.name == "amount" then
@@ -348,8 +355,8 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
       show_error(p, "Monthly amount is capped at " .. acc.money(n) .. " per station (blue belt limit).")
     end
     machine.config.monthly_cents = n
-  elseif el.name == "apr" and machine.role == "debt" then machine.config.apr = n
-  elseif el.name == "return" and machine.role == "vault" then machine.config.asset_return = n
+  elseif el.name == "apr" and machine.role == "debt" then set_rate(machine, owner, "apr", "applied_apr", n)
+  elseif el.name == "return" and machine.role == "vault" then set_rate(machine, owner, "asset_return", "applied_return", n)
   else return end
   labels.machine(machine, owner)
 end)
@@ -362,12 +369,12 @@ script.on_event(defines.events.on_gui_text_changed, function(e)
   if splitter then return edit_splitter(p, splitter, el, false) end
   local machine = machine_from_tags(el.tags)
   local owner = machine and state().accounts[machine.controller_unit_number]
-  if not (machine and (not owner or not owner.running)) then return end
+  if not (machine and (not owner or player_can_access(p, owner))) then return end
   local n = el.name == "amount" and decimal(el.text, true) or decimal(el.text)
   if not n then return end
   if el.name == "amount" then machine.config.monthly_cents = math.min(n, rules.max_station_cents())
-  elseif el.name == "apr" and machine.role == "debt" then machine.config.apr = n
-  elseif el.name == "return" and machine.role == "vault" then machine.config.asset_return = n
+  elseif el.name == "apr" and machine.role == "debt" then set_rate(machine, owner, "apr", "applied_apr", n)
+  elseif el.name == "return" and machine.role == "vault" then set_rate(machine, owner, "asset_return", "applied_return", n)
   else return end
   labels.machine(machine, owner)
 end)
@@ -393,9 +400,9 @@ script.on_event(defines.events.on_gui_switch_state_changed, function(e)
   if not machine then return end
   gui.clear_error(p)
   local owner = state().accounts[machine.controller_unit_number]
-  if owner and not player_can_change(p, owner) then
+  if owner and not player_can_access(p, owner) then
     el.switch_state = machine.config.category == "wants" and "right" or "left"
-    return show_error(p, "Pause the account before changing configuration.")
+    return show_error(p, "Account is unavailable.")
   end
   machine.config.category = el.switch_state == "right" and "wants" or "needs"
   labels.machine(machine, owner)

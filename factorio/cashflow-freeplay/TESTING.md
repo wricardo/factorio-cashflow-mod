@@ -79,6 +79,8 @@ Version `0.2.43` reworks the panels and labels:
 - **World.** Port labels carry the plate icon (iron for cash, copper for bills) and show only in alt mode. Passive Income and Expense labels show `N plates left to send` while the account runs and the belt is still taking plates, then `All plates sent`. Closing a month floats `Year Y Month M closed` with cash in, bills, and paid above each Cashflow Station for 4 seconds. World labels use the same names as panels (`Cashflow Station`, `Debt Station`, `Expense Station`).
 - Panel text lives in `locale/en` (section `[cf-gui]`); world labels and chat messages are still built in code.
 
+Version `0.2.44` lets you edit station values without pausing the Account. Monthly amounts, Active Income salary, Debt APR, Investment return, Expense `Needs`/`Wants`, and the Account name can change while it runs; amounts and rates apply from the next month (the month already in progress closes at the plan and rates it started with, and the panel says so). Linking and unlinking a station, and the starting debt and assets, still require a pause. Edits made while paused apply to the current month as before.
+
 ## Earned income
 
 1. Place a Coal Supply and an Active Income station apart from each other. Opening the Coal Supply must show only its chest window, with no Cashflow panel. Its label reads `Coal Supply`.
@@ -116,6 +118,6 @@ Iron and copper have no account identity. A plate emitted by any Account's stati
 1. Place a second complete station set away from the first. Configure A as `$5,000` income, `$2,000` Needs, with Debt and Investment Account rates of `18%` and `7%`; configure B as `$1,000` income, `$100` Wants, with `0%` debt APR. Wire their belts separately and run a month. Each Account must retain its own balances, reports, station rates, debt, assets, and carries.
 2. Feed copper only to A's Debt input and iron only to A's Investment Account input. At the next month boundary only A's debt, interest, assets, returns, and carries change.
 3. Connect A's iron output to B's Cashflow cash input. B must settle the received iron as B cash; neither Account's ledger is merged.
-4. Pause A, change a Debt APR, Investment Account return, or station amount, and restart it. B must continue unchanged. Attempting a configuration change while running must be rejected.
+4. While A runs, change a Debt APR, Investment Account return, and station amount: the open month must close with the old values and the next month use the new ones, and B must be unaffected. Then try to unlink one of A's stations from its station panel: the picker is disabled while A runs and works once A is paused.
 5. Delete one linked station, pause the account, and verify Start reports the missing station. Delete A's Account: its stations remain in the world but become unlinked and inert; B continues unchanged.
 6. Save/reload, then have two players open and configure different Accounts. Each GUI action must affect only its selected same-force, same-surface account.

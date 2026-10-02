@@ -190,11 +190,6 @@ local function sync_controller(root, cf)
   end
   body.checklist.visible = not cf.running
   local setup = body.setup
-  for _, name in ipairs({ "account_name", "debt", "assets" }) do
-    local field = field_of(setup, name)
-    if field then field.enabled = not cf.running end
-  end
-  setup.setup_note.visible = cf.running
   local toggle = body.toggle
   toggle.caption = { cf.running and "cf-gui.pause" or "cf-gui.start" }
   toggle.enabled = cf.running or complete
@@ -204,8 +199,8 @@ end
 
 -- Account panel: live dashboard (month progress, assets/debt/net worth/cashflow, investment
 -- coverage of expenses), the start checklist, account setup, the Start/Pause button, and the
--- yearly report table. Setup fields are read-only while running; starting debt and assets
--- become plain text after the first Start.
+-- yearly report table. The name can change any time; starting debt and assets become plain
+-- text after the first Start.
 function M.open_controller(p, cf)
   close(p)
   local tags = { controller_unit_number = cf.controller.unit_number }
@@ -218,15 +213,14 @@ function M.open_controller(p, cf)
   add_checklist(body, cf)
   local setup = body.add { type = "flow", name = "setup", direction = "vertical" }
   setup.add { type = "label", caption = { "cf-gui.setup" }, style = "bold_label" }
-  add_field(setup, "account_name", { "cf-gui.account-name" }, cf.name, tags, not cf.running)
+  add_field(setup, "account_name", { "cf-gui.account-name" }, cf.name, tags, true)
   if cf.started then
     setup.add { type = "label", caption = { "cf-gui.locked-debt", acc.money(cf.config.starting_debt_cents) } }
     setup.add { type = "label", caption = { "cf-gui.locked-assets", acc.money(cf.config.starting_assets_cents) } }
   else
-    add_field(setup, "debt", { "cf-gui.starting-debt" }, tostring(cf.config.starting_debt_cents / 100), tags, not cf.running, { numeric = true, decimal = true, suffix = "$" })
-    add_field(setup, "assets", { "cf-gui.starting-assets" }, tostring(cf.config.starting_assets_cents / 100), tags, not cf.running, { numeric = true, decimal = true, suffix = "$" })
+    add_field(setup, "debt", { "cf-gui.starting-debt" }, tostring(cf.config.starting_debt_cents / 100), tags, true, { numeric = true, decimal = true, suffix = "$" })
+    add_field(setup, "assets", { "cf-gui.starting-assets" }, tostring(cf.config.starting_assets_cents / 100), tags, true, { numeric = true, decimal = true, suffix = "$" })
   end
-  add_note(setup, "setup_note", { "cf-gui.pause-first-account" }, true)
   body.add { type = "button", name = "toggle", tags = tags }
   add_reports(body)
   add_error(body)
@@ -262,14 +256,15 @@ end
 
 -- Machine panel: an account picker (with a locate button) plus whatever fields the station's
 -- role needs: monthly amount (income/expense), salary (smelter), APR (debt), return (vault),
--- needs/wants switch (expense). Disabled while the linked controller is running.
+-- needs/wants switch (expense). Values stay editable while the account runs and apply from
+-- the next month; only (un)linking is locked until the account is paused.
 function M.open_machine(p, machine, controllers)
   close(p)
   local tags = { machine_unit_number = machine.unit_number }
   local root = p.gui.left.add { type = "frame", name = ROOT, direction = "vertical", tags = tags }
   local body = add_frame(root, { "entity-name.cf-freeplay-" .. machine.role }, false)
   local owner = machine.controller_unit_number and controllers[machine.controller_unit_number]
-  local editable = not owner or not owner.running
+  local linkable = not owner or not owner.running
   local selected, items = 1, { { "cf-gui.unlinked" } }
   for _, cf in ipairs(M.account_choices(machine, controllers)) do
     local position = cf.controller.position
@@ -278,22 +273,25 @@ function M.open_machine(p, machine, controllers)
   end
   body.add { type = "label", caption = { "cf-gui.account" }, style = "bold_label" }
   local row = body.add { type = "flow", name = "account_row", direction = "horizontal" }
-  row.add { type = "drop-down", name = "account", items = items, selected_index = selected, tags = tags, enabled = editable }
+  row.add { type = "drop-down", name = "account", items = items, selected_index = selected, tags = tags, enabled = linkable }
   row.add { type = "button", name = "locate", caption = { "cf-gui.locate" }, tooltip = { "cf-gui.locate-tooltip" }, tags = { cf_freeplay_locate = true, machine_unit_number = machine.unit_number } }
   local cap = acc.money(rules.max_station_cents())
   local amount_caption = { income = "cf-gui.field-income", expense = "cf-gui.field-expense", smelter = "cf-gui.field-salary" }
   if amount_caption[machine.role] then
-    add_field(body, "amount", { amount_caption[machine.role] }, tostring(machine.config.monthly_cents / 100), tags, editable, { numeric = true, decimal = true, suffix = "$" })
+    add_field(body, "amount", { amount_caption[machine.role] }, tostring(machine.config.monthly_cents / 100), tags, true, { numeric = true, decimal = true, suffix = "$" })
     add_note(body, "cap_hint", { "cf-gui.cap-hint", cap }, true)
   end
   if machine.role == "smelter" then add_note(body, "coal_note", { "cf-gui.smelter-note", acc.SMELTER_COAL_PER_MONTH }, true) end
-  if machine.role == "debt" then add_field(body, "apr", { "cf-gui.field-apr" }, tostring(machine.config.apr), tags, editable, { numeric = true, decimal = true, suffix = "%" }) end
-  if machine.role == "vault" then add_field(body, "return", { "cf-gui.field-return" }, tostring(machine.config.asset_return), tags, editable, { numeric = true, decimal = true, suffix = "%" }) end
+  if machine.role == "debt" then add_field(body, "apr", { "cf-gui.field-apr" }, tostring(machine.config.apr), tags, true, { numeric = true, decimal = true, suffix = "%" }) end
+  if machine.role == "vault" then add_field(body, "return", { "cf-gui.field-return" }, tostring(machine.config.asset_return), tags, true, { numeric = true, decimal = true, suffix = "%" }) end
   if machine.role == "expense" then
     body.add { type = "label", caption = { "cf-gui.category" } }
-    body.add { type = "switch", name = "category", switch_state = machine.config.category == "wants" and "right" or "left", left_label_caption = { "cf-gui.needs" }, right_label_caption = { "cf-gui.wants" }, tags = tags, enabled = editable }
+    body.add { type = "switch", name = "category", switch_state = machine.config.category == "wants" and "right" or "left", left_label_caption = { "cf-gui.needs" }, right_label_caption = { "cf-gui.wants" }, tags = tags }
   end
-  if not editable then add_note(body, "locked_note", { "cf-gui.pause-first-station", owner.name }, true) end
+  if owner and owner.running then
+    add_note(body, "next_month_note", { "cf-gui.applies-next-month" }, true)
+    add_note(body, "locked_note", { "cf-gui.pause-to-relink", owner.name }, true)
+  end
   add_hints(body, p, machine.role)
   add_error(body)
 end
