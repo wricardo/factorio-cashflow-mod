@@ -68,15 +68,17 @@ function F.new_player(index, surface)
   p.gui = { left = new_gui_element({ type = "flow" }) }
   function p.get_main_inventory() return p.inventory end
   function p.teleport(pos, target) p.position, p.surface = pos, target end
+  p.alerts = {}
   function p.print(msg) p.prints[#p.prints + 1] = msg end
+  function p.add_custom_alert(entity, icon, message, show_on_map) p.alerts[#p.alerts + 1] = { entity = entity, icon = icon, message = message, show_on_map = show_on_map } end
   return p
 end
-local default_settings = { ["cf-job-income"] = 5000, ["cf-needs"] = 2000, ["cf-wants"] = 800, ["cf-starting-debt"] = 18000, ["cf-debt-apr"] = 18, ["cf-starting-assets"] = 12000, ["cf-asset-return"] = 7, ["cf-game-speed"] = 1 }
+local default_settings = { ["cf-freeplay-month-seconds"] = 60 }
 function F.install(opts)
   opts = opts or {}; local h = { events = {}, nth = {}, logs = {}, tick = 0 }; local event_ids = {}
   local names = { "on_player_created", "on_chunk_generated", "on_gui_click", "on_runtime_mod_setting_changed", "on_player_main_inventory_changed", "on_built_entity", "on_player_mined_entity", "on_robot_mined_entity", "on_robot_built_entity", "on_entity_died", "script_raised_built", "script_raised_revive", "script_raised_destroy", "on_entity_cloned", "on_research_finished", "on_force_created", "on_gui_opened", "on_gui_confirmed", "on_gui_text_changed", "on_gui_selection_state_changed" }
   for i, name in ipairs(names) do event_ids[name] = i end
-  _G.defines = { events = event_ids, direction = { north = 0, east = 4, south = 8, west = 12 }, inventory = { chest = 1 }, entity_status_diode = { green = 1, yellow = 2 } }
+  _G.defines = { events = event_ids, direction = { north = 0, east = 4, south = 8, west = 12 }, inventory = { chest = 1 }, entity_status_diode = { green = 1, yellow = 2, red = 3 } }
   local g = {}; for k, v in pairs(default_settings) do g[k] = { value = (opts.settings and opts.settings[k]) or v } end; _G.settings = { global = g }
   _G.storage = opts.storage or {}
   _G.remote = {
@@ -86,7 +88,7 @@ function F.install(opts)
   }
   _G.script = { level = opts.level or { mod_name = "cashflow", level_name = "cashflow" }, on_init = function(fn) h.init = fn end, on_configuration_changed = function(fn) h.configuration_changed = fn end, on_event = function(id, fn) h.events[id] = fn end, on_nth_tick = function(n, fn) h.nth[n] = fn end }
   local surfaces = { nauvis = new_surface("nauvis", 1) }
-  _G.game = { surfaces = surfaces, players = {}, forces = { player = { recipes = {} } }, speed = 1, create_surface = function(name) local s = new_surface(name, #surfaces + 1); surfaces[name] = s; return s end, get_player = function(i) return _G.game.players[i] end, print = function(msg) h.logs[#h.logs + 1] = msg end }
+  _G.game = { surfaces = surfaces, players = {}, connected_players = {}, forces = { player = { recipes = {} } }, speed = 1, create_surface = function(name) local s = new_surface(name, #surfaces + 1); surfaces[name] = s; return s end, get_player = function(i) return _G.game.players[i] end, print = function(msg) h.logs[#h.logs + 1] = msg end }
   _G.prototypes = { item = {} }
   h.frames = {}
   _G.rendering = {
@@ -100,7 +102,7 @@ function F.install(opts)
   host_require("control")
   _G.require = function() error("Require can't be used outside of control.lua parsing.") end
   function h.fire(name, event) event = event or {}; event.name = event_ids[name]; local fn = h.events[event_ids[name]]; if fn then fn(event) end end
-  function h.add_player() local p = F.new_player(#_G.game.players + 1, surfaces.nauvis); _G.game.players[p.index] = p; h.fire("on_player_created", { player_index = p.index }); return p end
+  function h.add_player() local p = F.new_player(#_G.game.players + 1, surfaces.nauvis); _G.game.players[p.index] = p; _G.game.connected_players[#_G.game.connected_players + 1] = p; h.fire("on_player_created", { player_index = p.index }); return p end
   function h.build(name, player, position) local e = new_entity(surfaces.nauvis, { name = name, position = position, force = player.force }); h.fire("on_built_entity", { player_index = player.index, entity = e }); return e end
   function h.build_robot(name, position) local e = new_entity(surfaces.nauvis, { name = name, position = position }); h.fire("on_robot_built_entity", { entity = e }); return e end
   function h.mine(entity, player) entity.valid = false; h.fire("on_player_mined_entity", { player_index = player.index, entity = entity }) end

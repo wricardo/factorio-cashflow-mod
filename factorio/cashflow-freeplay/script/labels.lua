@@ -18,6 +18,10 @@ local function title(role)
   return TITLES[role] or role:sub(1, 1):upper() .. role:sub(2)
 end
 function M.display_name(role) return DISPLAY_NAMES[role] end
+-- Two-line summary of a yearly report, shared by the chat announcement and the Account panel.
+function M.year_report_text(report)
+  return "Income " .. acc.money(report.income_cents) .. " • Expenses " .. acc.money(report.expense_cents) .. "\nAssets " .. acc.money(report.assets_cents) .. " • Debt " .. acc.money(report.debt_cents) .. " • Net worth " .. acc.money(report.net_worth_cents)
+end
 -- Per-role label tint.
 
 local COLORS = {
@@ -127,7 +131,12 @@ local function update_status(machine, cf)
     if i == 1 and rate then lines[#lines + 1] = rate end
   end
   if machine.role == "expense" then lines[#lines + 1] = "Category: " .. machine.config.category end
-  set_status(machine.anchor, cf and defines.entity_status_diode.green or defines.entity_status_diode.yellow, lines)
+  local diode = cf and defines.entity_status_diode.green or defines.entity_status_diode.yellow
+  if machine.role == "cashflow" and cf and (cf.unpaid_blocked_ticks or 0) >= acc.UNPAID_ALERT_TICKS then
+    lines[#lines + 1] = "UNPAID OUT blocked: " .. cf.out.unpaid .. " bills waiting"
+    diode = defines.entity_status_diode.red
+  end
+  set_status(machine.anchor, diode, lines)
 end
 
 -- (Re)draws a compact world label plus helper-port labels, and refreshes the hover-pane status.

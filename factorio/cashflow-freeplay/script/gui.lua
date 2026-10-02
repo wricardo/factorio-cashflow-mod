@@ -3,6 +3,7 @@
 -- a controller or a machine so control.lua's gui_* event handlers know where edits go.
 local acc = require("script.accounting")
 local labels = require("script.labels")
+local rules = require("script.rules")
 local M = {}
 local ROOT = "cf_freeplay_panel"
 
@@ -45,6 +46,13 @@ function M.open_controller(p, cf)
   root.add { type = "button", name = "toggle", caption = cf.running and "Pause" or "Start", tags = root.tags }
   local year, month = acc.calendar(cf.month)
   root.add { type = "label", name = "summary", caption = "Year " .. year .. " Month " .. month .. "  Debt " .. acc.money(cf.debt_cents), tags = root.tags }
+  local reports = cf.year_reports or {}
+  if #reports > 0 then
+    root.add { type = "label", caption = "Yearly reports" }
+    for i = #reports, math.max(1, #reports - 4), -1 do
+      root.add { type = "label", caption = "Year " .. reports[i].year .. "\n" .. labels.year_report_text(reports[i]) }
+    end
+  end
 end
 -- Machine panel: an account picker plus whatever fields the station's role needs (monthly
 -- amount for income/expense, salary for smelter, APR for debt, return for vault, needs/wants
@@ -64,9 +72,9 @@ function M.open_machine(p, machine, controllers)
   end
   root.add { type = "label", caption = "Account" }
   root.add { type = "drop-down", name = "account", items = names, selected_index = selected, tags = root.tags, enabled = editable }
-  if machine.role == "income" or machine.role == "expense" then add_field(root, "amount", "Monthly " .. machine.role .. " ($, max " .. acc.money(acc.MAX_STATION_MONTHLY_CENTS) .. ")", tostring(machine.config.monthly_cents / 100), root.tags, editable) end
+  if machine.role == "income" or machine.role == "expense" then add_field(root, "amount", "Monthly " .. machine.role .. " ($, max " .. acc.money(rules.max_station_cents()) .. ")", tostring(machine.config.monthly_cents / 100), root.tags, editable) end
   if machine.role == "smelter" then
-    add_field(root, "amount", "Monthly salary ($, max " .. acc.money(acc.MAX_STATION_MONTHLY_CENTS) .. ")", tostring(machine.config.monthly_cents / 100), root.tags, editable)
+    add_field(root, "amount", "Monthly salary ($, max " .. acc.money(rules.max_station_cents()) .. ")", tostring(machine.config.monthly_cents / 100), root.tags, editable)
     root.add { type = "label", caption = "Load " .. acc.SMELTER_COAL_PER_MONTH .. " coal each month; smelting takes 2 seconds." }
   end
   if machine.role == "debt" then add_field(root, "apr", "Debt APR (%)", tostring(machine.config.apr), root.tags, editable) end

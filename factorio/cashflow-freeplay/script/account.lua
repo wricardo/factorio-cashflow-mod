@@ -24,9 +24,9 @@ function M.new(controller, config)
     controller = controller, surface_index = controller.surface.index, force_index = controller.force.index,
     name = "Account " .. controller.unit_number, running = false, started = false, month = 1, tick_in_month = 0,
     config = defaults(config), machines = {}, entities = { income = {}, expense = {}, cashflow = {}, debt = {}, vault = {}, smelter = {} }, plan = {}, emitted = {}, out = {},
-    node = { iron = 0, copper = 0 }, stats = {}, meters = {}, renderings = {},
+    node = { iron = 0, copper = 0 }, stats = {}, meters = {}, renderings = {}, year_totals = { cash_in = 0, bills_in = 0 }, year_reports = {},
     debt_cents = 0, opening_debt_cents = 0, opening_principal_cents = 0,
-    consumed_total_cents = 0, goals = {}, won = false,
+    consumed_total_cents = 0, goals = {},
   }
 end
 -- Upgrades a stored account to the current shape: migrates single-station cashflow/debt/vault
@@ -70,6 +70,9 @@ function M.normalize(cf)
   end
   for _, machine in ipairs(cf.entities.smelter) do machine.pending_salary = machine.pending_salary or 0 end
   cf.out = cf.out or stations.new_outputs()
+  cf.year_totals = cf.year_totals or { cash_in = 0, bills_in = 0 }
+  cf.year_reports = cf.year_reports or {}
+  cf.won = nil
   stations.refresh_totals(cf)
 end
 -- Start is blocked unless at least one Cashflow Station, Debt Station, and Investment Account is

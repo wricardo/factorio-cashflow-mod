@@ -6,8 +6,14 @@ local M = {}
 M.CENTS_PER_PLATE = 1000
 M.TICKS_PER_MONTH = 3600
 -- Income/Expense stations emit through one blue (express) belt port: 45 plates/s caps it at
--- $27,000/month, so configured amounts are limited to $20,000 (2,000 plates) per station.
-M.MAX_STATION_MONTHLY_CENTS = 2000000
+-- $27,000 over a 60-second month, so a station is limited to 2,000 plates ($20,000) per 60
+-- seconds of month length. The cap scales with the month because it is a throughput limit.
+M.MAX_STATION_PLATES = 2000
+function M.max_station_cents(month_ticks)
+  return math.floor(M.MAX_STATION_PLATES * month_ticks / M.TICKS_PER_MONTH) * M.CENTS_PER_PLATE
+end
+-- Unpaid bills that cannot leave any UNPAID OUT belt for this many ticks (5 seconds) raise an alert.
+M.UNPAID_ALERT_TICKS = 300
 -- Smelter stations: each month's salary needs one hand-delivered batch of this much coal, and
 -- smelting it takes SMELT_TICKS (2 seconds) before the salary plates start leaving CASH OUT.
 M.SMELTER_COAL_PER_MONTH = 50
@@ -80,13 +86,18 @@ function M.close_month(state, inputs, rates)
     },
   }
 end
--- Debt-free and principal's monthly return at least covers monthly needs+wants: the
--- Rich Dad "financial independence" win condition.
-
-function M.is_financially_independent(debt_cents, principal_cents, asset_return, needs_dollars, wants_dollars)
-  if debt_cents > 0 then return false end
-  local expenses_cents = (needs_dollars + wants_dollars) * 100
-  return M.monthly_amount(principal_cents, asset_return) >= expenses_cents
+-- Closes a year of month reports into one summary. `totals` holds plates of cash and bills that
+-- settled at the Account's Cashflow Stations during the year; assets and debt are year-end
+-- balances in cents. Income and expenses are therefore what actually moved through settlement.
+function M.year_report(year, totals, assets_cents, debt_cents)
+  return {
+    year = year,
+    income_cents = totals.cash_in * M.CENTS_PER_PLATE,
+    expense_cents = totals.bills_in * M.CENTS_PER_PLATE,
+    assets_cents = assets_cents,
+    debt_cents = debt_cents,
+    net_worth_cents = assets_cents - debt_cents,
+  }
 end
 
 -- Converts the 1-based month counter (cf.month) into a 12-month calendar: month 1 is

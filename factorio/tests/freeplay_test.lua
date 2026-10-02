@@ -649,4 +649,107 @@ function T.pay_in_iron_cannot_exceed_existing_debt()
   eq(cf.stats.debt_paid, 5)
   eq(pay_line.get_item_count("iron-plate"), 5, "iron beyond the existing debt stays on the belt")
 end
+
+-- A running account with the three required stations; returns everything the tests below poke at.
+local function running_account(h, player)
+  local controller = h.build("cf-freeplay-controller", player)
+  local _, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, controller)
+  h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  local cf = storage.cf_freeplay.accounts[controller.unit_number]
+  eq(cf.running, true)
+  return cf, cashflow
+end
+
+function T.a_yearly_report_closes_every_twelfth_month_and_nothing_wins()
+  local h, player = setup()
+  local cf = running_account(h, player)
+  local station = cf.entities.cashflow[1].entities
+  for _ = 1, 11 do
+    station.cash_in.get_transport_line(1).put("iron-plate", 10)
+    station.bills_in.get_transport_line(1).put("copper-plate", 4)
+    h.run_ticks(MONTH)
+  end
+  eq(cf.month, 12)
+  eq(#cf.year_reports, 0, "no report before the year ends")
+  station.cash_in.get_transport_line(1).put("iron-plate", 10)
+  station.bills_in.get_transport_line(1).put("copper-plate", 4)
+  h.run_ticks(MONTH)
+  eq(cf.month, 13)
+  eq(#cf.year_reports, 1)
+  local report = cf.year_reports[1]
+  eq(report.year, 1)
+  eq(report.income_cents, 12 * 10 * 1000, "twelve months of 10 settled cash plates")
+  eq(report.expense_cents, 12 * 4 * 1000, "twelve months of 4 settled bill plates")
+  eq(report.assets_cents, 1200000)
+  eq(report.debt_cents, cf.debt_cents)
+  eq(report.net_worth_cents, report.assets_cents - report.debt_cents)
+  eq(cf.year_totals.cash_in, 0, "the next year starts from zero")
+  eq(cf.won, nil, "there is no winning condition")
+  local announced = player.prints[#player.prints]
+  eq(announced:find("Year 1 report", 1, true) ~= nil, true)
+  eq(announced:find("Income $1,200 • Expenses $480", 1, true) ~= nil, true)
+  eq(announced:find("Net worth", 1, true) ~= nil, true)
+  h.open(player, cf.controller)
+  local listed = false
+  for _, child in ipairs(panel(player).children) do if child.caption and child.caption:find("Year 1\nIncome $1,200", 1, true) then listed = true end end
+  eq(listed, true, "the Account panel lists the yearly report")
+end
+
+function T.unpaid_bills_stuck_on_a_blocked_unpaid_out_raise_an_alert()
+  local h, player = setup()
+  local cf, cashflow = running_account(h, player)
+  cf.out.unpaid = 40
+  h.run_ticks(400)
+  eq(#player.alerts > 0, true, "an alert fires once nothing can leave UNPAID OUT for 5 seconds")
+  local alert = player.alerts[1]
+  eq(alert.entity, cashflow)
+  eq(alert.icon.name, "copper-plate")
+  eq(alert.message:find("UNPAID OUT is blocked", 1, true) ~= nil, true)
+  eq(cashflow.custom_status.diode, defines.entity_status_diode.red)
+  eq(cashflow.custom_status.label:find("UNPAID OUT blocked", 1, true) ~= nil, true)
+end
+
+function T.unpaid_bills_that_keep_flowing_do_not_alert()
+  local h, player = setup()
+  local cf = running_account(h, player)
+  -- A backlog far larger than the belt: pending bills stay above zero the whole time, but every
+  -- sweep some of them leave, so this is slow traffic rather than a blockage.
+  cf.out.unpaid = 4000
+  local belt = cf.entities.cashflow[1].entities.unpaid_out
+  for _ = 1, 200 do
+    h.run_ticks(2)
+    for lane = 1, 2 do belt.get_transport_line(lane).remove_item({ name = "copper-plate", count = 99 }) end
+  end
+  eq(cf.out.unpaid > 0 and cf.out.unpaid < 4000, true, "bills are still pending and still moving")
+  eq(#player.alerts, 0)
+end
+
+function T.month_length_setting_sets_the_month_and_scales_station_caps()
+  local h = fake.install({ level = { level_name = "freeplay" }, settings = { ["cf-freeplay-month-seconds"] = 30 } })
+  h.init()
+  local player = h.add_player()
+  local controller = h.build("cf-freeplay-controller", player)
+  local income, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ income, cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, income); edit(h, player, panel(player).amount, "1000")
+  h.open(player, controller)
+  h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  local cf = storage.cf_freeplay.accounts[controller.unit_number]
+  h.run_ticks(1798)
+  eq(cf.month, 1, "a 30 second month is still open at 1798 ticks")
+  eq(cf.emitted.income[income.unit_number], 99, "100 planned plates are spread over the 30 second month")
+  h.run_ticks(2)
+  eq(cf.month, 2, "and the month closes at 1800 ticks")
+  local spare = h.build("cf-freeplay-income", player)
+  local machine = storage.cf_freeplay.machines[spare.unit_number]
+  h.open(player, spare)
+  h.text(player, panel(player).amount, "15000")
+  eq(machine.config.monthly_cents, 1000000, "a 30 second month halves the $20,000 cap")
+  settings.global["cf-freeplay-month-seconds"].value = 15
+  h.fire("on_runtime_mod_setting_changed", { setting = "cf-freeplay-month-seconds" })
+  eq(machine.config.monthly_cents, 500000, "shortening the month clamps existing stations")
+  eq(h.logs[#h.logs]:find("$5,000", 1, true) ~= nil, true, "players are told why")
+end
 return T

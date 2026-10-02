@@ -8,6 +8,7 @@ local pulse = require("script.pulse")
 local layout = require("script.station_layout")
 local labels = require("script.labels")
 local gui = require("script.gui")
+local rules = require("script.rules")
 local SWEEP_TICKS, REFRESH_TICKS = 2, 30 -- belt sweep cadence (ticks); label/account refresh cadence (ticks)
 local PREFIX, STATION_LAYOUT_VERSION = "cf-freeplay-", 2 -- entity name prefix; bump to force normalize_layouts() migration
 
@@ -168,7 +169,7 @@ local function normalize_layouts()
   s.coal_supplies = s.coal_supplies or {}
   for _, machine in pairs(s.machines) do
     layout.normalize(machine)
-    if machine.config and machine.config.monthly_cents then machine.config.monthly_cents = math.min(machine.config.monthly_cents, acc.MAX_STATION_MONTHLY_CENTS) end
+    if machine.config and machine.config.monthly_cents then machine.config.monthly_cents = math.min(machine.config.monthly_cents, rules.max_station_cents()) end
     local owner = machine.controller_unit_number and s.accounts[machine.controller_unit_number]
     labels.machine(machine, owner)
   end
@@ -285,8 +286,8 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
   local n = el.name == "amount" and decimal(el.text, true) or decimal(el.text)
   if not n then return show_error(p, "Enter a nonnegative number.") end
   if el.name == "amount" then
-    if n > acc.MAX_STATION_MONTHLY_CENTS then
-      n = acc.MAX_STATION_MONTHLY_CENTS
+    if n > rules.max_station_cents() then
+      n = rules.max_station_cents()
       el.text = tostring(math.floor(n / 100))
       show_error(p, "Monthly amount is capped at " .. acc.money(n) .. " per station (blue belt limit).")
     end
@@ -306,7 +307,7 @@ script.on_event(defines.events.on_gui_text_changed, function(e)
   if not (machine and (not owner or not owner.running)) then return end
   local n = el.name == "amount" and decimal(el.text, true) or decimal(el.text)
   if not n then return end
-  if el.name == "amount" then machine.config.monthly_cents = math.min(n, acc.MAX_STATION_MONTHLY_CENTS)
+  if el.name == "amount" then machine.config.monthly_cents = math.min(n, rules.max_station_cents())
   elseif el.name == "apr" and machine.role == "debt" then machine.config.apr = n
   elseif el.name == "return" and machine.role == "vault" then machine.config.asset_return = n
   else return end
@@ -332,14 +333,15 @@ script.on_event(defines.events.on_gui_selection_state_changed, function(e)
   end
 end)
 -- Fast loop: advances each running account's belt I/O by SWEEP_TICKS and closes the month
--- once a full TICKS_PER_MONTH has elapsed. Auto-pauses an account whose linked stations no
--- longer satisfy account.can_start (e.g. a required station was removed).
+-- once the configured month length (rules.month_ticks) has elapsed. Auto-pauses an account whose
+-- linked stations no longer satisfy account.can_start (e.g. a required station was removed).
 script.on_nth_tick(SWEEP_TICKS, function()
+  local month_ticks = rules.month_ticks()
   for _, cf in pairs(state().accounts) do
     if cf.running then
       if account.can_start(cf) then
-        stations.sweep(cf, SWEEP_TICKS)
-        if cf.tick_in_month >= acc.TICKS_PER_MONTH then pulse.close_month(cf) end
+        stations.sweep(cf, SWEEP_TICKS, month_ticks)
+        if cf.tick_in_month >= month_ticks then pulse.close_month(cf) end
       else
         cf.running = false
         labels.account(cf)
@@ -347,16 +349,42 @@ script.on_nth_tick(SWEEP_TICKS, function()
     end
   end
 end)
+-- Shortening the month lowers the throughput cap on income/expense stations; clamp any amount
+-- above the new cap so no station is configured beyond what its belt can deliver.
+script.on_event(defines.events.on_runtime_mod_setting_changed, function(e)
+  if e.setting ~= "cf-freeplay-month-seconds" then return end
+  local cap, clamped = rules.max_station_cents(), false
+  for _, machine in pairs(state().machines) do
+    if machine.config and machine.config.monthly_cents and machine.config.monthly_cents > cap then
+      machine.config.monthly_cents, clamped = cap, true
+      labels.machine(machine, machine.controller_unit_number and state().accounts[machine.controller_unit_number])
+    end
+  end
+  if clamped then game.print("Cashflow Freeplay: station amounts were capped at " .. acc.money(cap) .. " for the new month length (belt throughput limit).") end
+end)
+-- Unpaid bills that cannot leave UNPAID OUT are added to debt at month end, so warn the account's
+-- force on every Cashflow Station while they are stuck.
+local function alert_blocked_unpaid(cf)
+  local message = "Unpaid bills are stuck: UNPAID OUT is blocked (" .. cf.out.unpaid .. " waiting). They will be added to debt at month end."
+  for _, player in pairs(game.connected_players) do
+    if player.force.index == cf.force_index then
+      for _, machine in ipairs(cf.entities.cashflow) do
+        if machine.anchor.valid then player.add_custom_alert(machine.anchor, { type = "item", name = "copper-plate" }, message, true) end
+      end
+    end
+  end
+end
 -- Slow loop: refreshes the floating controller/debt/vault/smelter labels so displayed balances,
 -- rates, and coal loads stay current without redrawing them every sweep tick, and tops every
 -- Coal Supply back up to full.
-script.on_nth_tick(REFRESH_TICKS, function()
+script.on_nth_tick(REFRESH_TICKS, function(e)
   local s = state()
   for _, cf in pairs(s.accounts) do
     if cf.running then labels.account(cf) end
     for _, machine in ipairs(cf.entities.cashflow) do labels.machine(machine, cf) end
     for _, machine in ipairs(cf.entities.debt) do labels.machine(machine, cf) end
     for _, machine in ipairs(cf.entities.vault) do labels.machine(machine, cf) end
+    if e.tick % (REFRESH_TICKS * 2) == 0 and (cf.unpaid_blocked_ticks or 0) >= acc.UNPAID_ALERT_TICKS then alert_blocked_unpaid(cf) end
   end
   for _, machine in pairs(s.machines) do if machine.role == "smelter" then labels.machine(machine) end end
   for unit, entity in pairs(s.coal_supplies) do

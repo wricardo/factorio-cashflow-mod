@@ -111,11 +111,21 @@ function T.deposits_start_earning_next_month()
   eq(r.opening_principal_cents, 1400000)
 end
 
-function T.financial_independence_requires_zero_debt()
-  -- $480,000 at 7% returns exactly $2,800/month
-  eq(acc.is_financially_independent(0, 48000000, 7, 2000, 800), true)
-  eq(acc.is_financially_independent(0, 47990000, 7, 2000, 800), false)
-  eq(acc.is_financially_independent(1000, 48000000, 7, 2000, 800), false)
+function T.year_report_totals_settled_cash_and_bills_and_nets_worth()
+  local r = acc.year_report(2, { cash_in = 600, bills_in = 450 }, 1200000, 1800000)
+  eq(r.year, 2)
+  eq(r.income_cents, 600000)
+  eq(r.expense_cents, 450000)
+  eq(r.assets_cents, 1200000)
+  eq(r.debt_cents, 1800000)
+  eq(r.net_worth_cents, -600000, "debt above assets gives negative net worth")
+end
+
+function T.station_cap_scales_with_month_length_in_whole_plates()
+  eq(acc.max_station_cents(3600), 2000000, "a 60 second month allows $20,000")
+  eq(acc.max_station_cents(1800), 1000000, "half the month, half the cap")
+  eq(acc.max_station_cents(36000), 20000000, "ten times the month, ten times the cap")
+  eq(acc.max_station_cents(601) % acc.CENTS_PER_PLATE, 0, "caps are whole plates")
 end
 
 function T.money_formatting()

@@ -100,17 +100,6 @@ function M.capture_opening_balances(cf)
   M.refresh_totals(cf)
 end
 
--- Sum of this month's projected asset returns across every linked vault station, used to
--- check financial-independence (pulse.close_month).
-function M.monthly_returns_cents(cf)
-  local total = 0
-  for _, machine in ipairs(cf.entities.vault) do
-    local inv = inventory(machine.anchor)
-    total = total + acc.monthly_amount((inv and inv.get_item_count(IRON) or 0) * P, machine.config.asset_return)
-  end
-  return total
-end
-
 -- Month close: feeds `waiting` copper (unpaid bills + prior interest) into debt stations'
 -- chests, accrues interest per debt station and returns per vault station (each with its own
 -- carried fraction), and refreshes totals. Returns combined interest/return cents and plates.
@@ -158,10 +147,10 @@ end
 
 -- Keeps each income/expense station's output belt caught up with its planned monthly total,
 -- spreading emission evenly across the month via accounting.due_by_tick.
-local function emit(cf, role, item)
+local function emit(cf, role, item, month_ticks)
   for _, machine in ipairs(cf.entities[role]) do
     local planned, emitted = cf.plan[role][machine.unit_number] or 0, cf.emitted[role][machine.unit_number] or 0
-    local due = acc.due_by_tick(planned, cf.tick_in_month)
+    local due = acc.due_by_tick(planned, cf.tick_in_month, month_ticks)
     machine.out = (machine.out or 0) + due - emitted
     cf.emitted[role][machine.unit_number] = due
     local inv = inventory(machine.anchor)
@@ -283,12 +272,16 @@ end
 -- Called every SWEEP_TICKS for a running account: advances the month clock, runs every
 -- station's belt I/O, then flushes any pending surplus/unpaid/interest/returns onto their
 -- output belts (capped by what each push actually accepts) and refreshes account totals.
-function M.sweep(cf, ticks)
+-- `cf.unpaid_blocked_ticks` counts consecutive ticks in which unpaid bills were waiting but not
+-- a single plate fit on any UNPAID OUT belt; control.lua turns that into an alert.
+function M.sweep(cf, ticks, month_ticks)
   cf.tick_in_month = cf.tick_in_month + ticks
-  emit(cf, "income", IRON); emit(cf, "expense", COPPER); cashflow(cf); debt(cf); vault(cf); smelter(cf, ticks)
+  emit(cf, "income", IRON, month_ticks); emit(cf, "expense", COPPER, month_ticks); cashflow(cf); debt(cf); vault(cf); smelter(cf, ticks)
   local e = cf.entities
   cf.out.surplus = cf.out.surplus - push_spread(e.cashflow, "surplus_out", IRON, cf.out.surplus)
-  cf.out.unpaid = cf.out.unpaid - push_spread(e.cashflow, "unpaid_out", COPPER, cf.out.unpaid)
+  local unpaid_pushed = push_spread(e.cashflow, "unpaid_out", COPPER, cf.out.unpaid)
+  cf.out.unpaid = cf.out.unpaid - unpaid_pushed
+  cf.unpaid_blocked_ticks = (cf.out.unpaid > 0 and unpaid_pushed == 0) and (cf.unpaid_blocked_ticks or 0) + ticks or 0
   for _, machine in ipairs(e.debt) do machine.pending_interest = machine.pending_interest - M.push(machine.entities.interest_out, COPPER, machine.pending_interest) end
   for _, machine in ipairs(e.vault) do machine.pending_returns = machine.pending_returns - M.push(machine.entities.return_out, IRON, machine.pending_returns) end
   M.refresh_totals(cf)

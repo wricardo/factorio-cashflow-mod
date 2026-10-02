@@ -6,7 +6,7 @@
 npm run package:factorio
 ```
 
-Copy `factorio/dist/cashflow-freeplay_0.2.38.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+Copy `factorio/dist/cashflow-freeplay_0.2.39.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
 ## Unrestricted Freeplay
 
 Cashflow Freeplay does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
@@ -62,6 +62,8 @@ Version `0.2.37` shows each station's live metrics in the status row of Factorio
 
 Version `0.2.38` renames stations for players: the Cashflow Controller is **Account**, the Income Station is **Passive Income**, the Smelter is **Active Income**, and the Asset Vault/Asset Warehouse is **Investment Account**. Only display text changed; internal entity IDs are unchanged, so existing saves and placed stations keep working. Debt `INTEREST OUT` is now orange (copper). The hover pane also shows each Debt Station's configured `APR` and each Investment Account's configured `Return rate`, so neither requires opening the station.
 
+Version `0.2.39` removes the unused win condition (the game is free play), adds a **yearly report** and an **alert for stuck unpaid bills**, and makes the **month length configurable**. A yearly report closes every 12th month with total income (cash plates settled at the Account's Cashflow Stations), total expenses (bill plates settled), and year-end assets, debt and net worth. It is announced in chat and kept in the Account panel (latest five). When unpaid bills cannot leave any `UNPAID OUT` belt for 5 seconds, every player on the Account's force gets an alert on its Cashflow Stations, and each station's hover pane shows `UNPAID OUT blocked` with a red light; such bills are added to debt at month end. The runtime-global setting `Month length (seconds)` (10–3600, default 60) sets the month; income/expense station limits scale with it ($20,000 per 60 seconds), and shortening the month caps existing stations.
+
 ## Earned income
 
 1. Place a Coal Supply and an Active Income station apart from each other. Opening the Coal Supply must show only its chest window, with no Cashflow panel. Its label reads `Coal Supply`.
@@ -79,6 +81,12 @@ Version `0.2.38` renames stations for players: the Cashflow Controller is **Acco
 5. Start the Account. Passive Income and Expense chests fill with the month’s planned plates; each linked Cashflow Station shows the signed monthly cashflow; each Debt chest displays its own copper balance and emits interest at its own APR; each Investment Account displays its iron assets and emits returns at its own rate. World labels remain compact on one line. Hovering any station must show its live metrics in the hover pane's status row, replacing `Normal`: Debt Stations include `APR`, Investment Accounts include `Return rate`. The Account label aggregates every linked asset and debt balance, but does not show monthly cashflow. Every custom panel must close when its `Close` button is pressed.
 
 Iron and copper have no account identity. A plate emitted by any Account's stations can enter another account's station; the receiving account processes it.
+
+## Yearly report, alerts, and month length
+
+1. Run an Account for 12 months (or lower `Month length` in Settings → Map). At the end of month 12 chat shows `<Account> • Year 1 report` with `Income`, `Expenses`, `Assets`, `Debt`, and `Net worth`. Open the Account: a `Yearly reports` list shows the same figures. Income and expenses must equal the cash and bill plates that reached the Cashflow Stations during the year.
+2. Disconnect or block a Cashflow Station's `UNPAID OUT` belt (or leave it unconnected) while bills go unpaid. Within a few seconds an alert with a copper-plate icon appears for that station, and hovering it shows `UNPAID OUT blocked` with a red status light. Reconnect the belt: the alert stops appearing and the light returns to green. A belt that is merely slow, but still moving, must not alert.
+3. Change `Month length (seconds)` mid-game. The next month closes at the new length, a station configured above the new `max` is capped with a chat message, and income/expense panels show the new `max`.
 
 ## Two accounts and lifecycle
 

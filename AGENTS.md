@@ -19,9 +19,11 @@ The root browser simulator is separate and shares no code with the mod.
 
 - **Data stage:** `factorio/cashflow-freeplay/data.lua` declares placeable controller/station prototypes. The controller is a 3×3 `market` (no inventory) drawn with Sosciencity's CC BY 4.0 Computing Center art; the five storage stations are chests with licensed Warehousing art; the Smelter (1-slot chest) and Coal Supply (20-slot chest) reuse vanilla electric-furnace and electric-mining-drill art.
 - **Runtime stage:** `control.lua` registers entities, links stations to controllers, owns persistent accounts in `storage.cf_freeplay`, and drives the monthly simulation without restricting vanilla Freeplay content.
-- **Station layout:** `script/station_layout.lua` creates hidden helper ports outside building footprints: Income, Expense, Debt, and Smelter are 3×3 Storehouse-sized; Cashflow and Asset Warehouse are 6×6 Warehouses. The controller and Coal Supply have no ports; Coal Supply is not a linkable role and is tracked only in `storage.cf_freeplay.coal_supplies` for refilling.
-- **Domain boundary:** `script/accounting.lua` has no Factorio API dependency and owns integer-cent money math and month close calculations. Keep Factorio integration in `control.lua`, `stations.lua`, and `pulse.lua`.
-- **Presentation:** `script/labels.lua` renders station/port labels and controller account status. `script/gui.lua` owns configuration UI.
+- **Station layout:** `script/station_layout.lua` creates hidden helper ports outside building footprints: Passive Income, Expense, Debt, and Active Income are 3×3 Storehouse-sized; Cashflow and Investment Account are 6×6 Warehouses. The Account and Coal Supply have no ports; Coal Supply is not a linkable role and is tracked only in `storage.cf_freeplay.coal_supplies` for refilling.
+- **Domain boundary:** `script/accounting.lua` has no Factorio API dependency and owns integer-cent money math, month close calculations, and the yearly report summary. Keep Factorio integration in `control.lua`, `stations.lua`, `pulse.lua`, and `rules.lua`.
+- **Settings:** `settings.lua` declares the runtime-global `cf-freeplay-month-seconds` (default 60). `script/rules.lua` is the only reader; income/expense station caps scale with it (`accounting.max_station_cents`) because the cap is a belt-throughput limit. There is no win condition; the game is free play.
+- **Reports and alerts:** `pulse.lua` closes a yearly report every 12th month (stored in `cf.year_reports`, shown in the Account panel and chat). `stations.sweep` tracks `cf.unpaid_blocked_ticks`; `control.lua` alerts when unpaid bills cannot leave `UNPAID OUT` for `accounting.UNPAID_ALERT_TICKS`.
+- **Presentation:** `script/labels.lua` renders station/port labels, hover-pane status, and controller account status. `script/gui.lua` owns configuration UI.
 
 ## Key Files
 
@@ -30,6 +32,7 @@ The root browser simulator is separate and shares no code with the mod.
 - `factorio/cashflow-freeplay/script/station_layout.lua` — helper-port placement and cleanup.
 - `factorio/cashflow-freeplay/script/accounting.lua` — pure finance engine.
 - `factorio/cashflow-freeplay/script/stations.lua`, `pulse.lua`, `account.lua` — simulation orchestration.
+- `factorio/cashflow-freeplay/script/rules.lua`, `settings.lua` — month-length setting and its derived limits.
 - `factorio/cashflow-freeplay/script/labels.lua`, `gui.lua` — player-facing presentation.
 - `factorio/cashflow-freeplay/THIRD_PARTY_LICENSES.md` — required Sosciencity (CC BY 4.0) and Warehousing (MIT) artwork attribution.
 - `factorio/cashflow-freeplay/migrations/` — JSON prototype renames for saves from older versions; `control.lua` finishes each one in `on_configuration_changed`.
