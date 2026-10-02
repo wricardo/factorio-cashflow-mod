@@ -21,10 +21,11 @@ if [[ -f "$mod_list" ]]; then
   updated_mod_list="$(mktemp "$mods_dir/mod-list.json.XXXXXX")"
   trap 'rm -f "$updated_mod_list"' EXIT
   jq --arg name "$name" '
-    if any((.mods // [])[]; .name == $name) then
+    .mods = [(.mods // [])[] | select(.name != "cashflow-freeplay")] |
+    if any(.mods[]; .name == $name) then
       .mods |= map(if .name == $name then .enabled = true else . end)
     else
-      .mods = (.mods // []) + [{ name: $name, enabled: true }]
+      .mods += [{ name: $name, enabled: true }]
     end
   ' "$mod_list" > "$updated_mod_list"
   mv "$updated_mod_list" "$mod_list"
@@ -32,6 +33,6 @@ else
   printf '{"mods":[{"name":"%s","enabled":true}]}\n' "$name" > "$mod_list"
 fi
 
-find "$mods_dir" -maxdepth 1 -type f -name "${name}_*.zip" -delete
+find "$mods_dir" -maxdepth 1 -type f \( -name "${name}_*.zip" -o -name 'cashflow-freeplay_*.zip' \) -delete
 cp "$archive" "$mods_dir/${name}_${version}.zip"
 printf 'Built and installed %s_%s in %s\n' "$name" "$version" "$mods_dir"

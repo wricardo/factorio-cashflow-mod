@@ -1,6 +1,6 @@
 -- Runtime entry point: entity registry, controller<->station linking, GUI event wiring, and the
 -- two recurring tick loops (fast belt sweep + slow label refresh). All persistent state lives
--- under storage.cf_freeplay; `accounting.lua` and `stations.lua` do the actual money math.
+-- under storage.cashflow; `accounting.lua` and `stations.lua` do the actual money math.
 local acc = require("script.accounting")
 local account = require("script.account")
 local stations = require("script.stations")
@@ -11,16 +11,16 @@ local gui = require("script.gui")
 local rules = require("script.rules")
 local split = require("script.split")
 local SWEEP_TICKS, REFRESH_TICKS = 2, 30 -- belt sweep cadence (ticks); label/account refresh cadence (ticks)
-local PREFIX, STATION_LAYOUT_VERSION = "cf-freeplay-", 2 -- entity name prefix; bump to force normalize_layouts() migration
+local PREFIX = "cashflow-" -- entity name prefix
 
 -- Lazily creates and returns the mod's single persistent state table.
 local function state()
-  storage.cf_freeplay = storage.cf_freeplay or { schema_version = 1, station_layout_version = STATION_LAYOUT_VERSION, accounts = {}, machines = {}, splitters = {} }
-  return storage.cf_freeplay
+  storage.cashflow = storage.cashflow or { schema_version = 1, accounts = {}, machines = {}, splitters = {} }
+  return storage.cashflow
 end
 -- Returns the station role ("controller", "income", "expense", "cashflow", "debt", "vault",
 -- "smelter") for one of our entities, or nil if the entity isn't ours or has no linkable role.
--- Coal Supply (cf-freeplay-coal) is deliberately not a role: it links to no account, so
+-- Coal Supply (cashflow-coal) is deliberately not a role: it links to no account, so
 -- opening it shows its plain vanilla chest window.
 local function role_of(entity)
   if not (entity and entity.valid and entity.name:sub(1, #PREFIX) == PREFIX) then return nil end
@@ -60,7 +60,7 @@ local function link(machine, controller_unit)
   return true
 end
 -- on_built handler: creates the controller account or machine record for a freshly placed
--- cf-freeplay-* entity, building its hidden helper-port belts via station_layout.build.
+-- cashflow-* entity, building its hidden helper-port belts via station_layout.build.
 -- Destroys-and-drops the entity if there isn't room for its ports. A Coal Supply is only
 -- tracked for refilling.
 local function register(entity)
@@ -159,7 +159,7 @@ end
 
 -- Script-interface query surface for external telemetry tools: per-account snapshot of
 -- balances, rates, and running/pending interest state. Read-only; no mutation.
-remote.add_interface("cashflow-freeplay", {
+remote.add_interface("cashflow", {
   telemetry = function()
     local accounts = {}
     for unit, cf in pairs(state().accounts) do
@@ -197,9 +197,7 @@ remote.add_interface("cashflow-freeplay", {
   end,
 })
 
--- Re-derives hidden port geometry/direction and config defaults for every machine/account,
--- then re-fills any owed income/expense buffers. Runs on load and after config changes so
--- saves made with an older station_layout_version or account.normalize shape self-heal.
+-- Re-derives hidden port geometry/direction and config defaults for every machine/account.
 local function normalize_layouts()
   local s = state()
   s.coal_supplies = s.coal_supplies or {}
@@ -216,55 +214,10 @@ local function normalize_layouts()
     stations.refresh_totals(cf)
   end
 end
--- Pre-0.2.23 controllers were 2000-slot chests. migrations/cashflow-freeplay_0.2.23.json renames
--- them to cf-freeplay-legacy-controller (Factorio cannot change an entity's type in place); this
--- swaps each for the market-type controller at the same position, re-keys its account by the
--- new unit_number, relinks its stations, and spills anything a player had stored in the chest.
-local function migrate_legacy_controllers()
-  local s, legacy = state(), {}
-  for unit, cf in pairs(s.accounts) do
-    if cf.controller and cf.controller.valid and cf.controller.name == PREFIX .. "legacy-controller" then legacy[#legacy + 1] = unit end
-  end
-  for _, unit in ipairs(legacy) do
-    local cf = s.accounts[unit]
-    local old = cf.controller
-    local surface, position, force = old.surface, old.position, old.force
-    local inv = old.get_inventory(defines.inventory.chest)
-    local contents = inv and inv.get_contents() or {}
-    old.destroy()
-    for _, stack in ipairs(contents) do surface.spill_item_stack { position = position, stack = { name = stack.name, count = stack.count, quality = stack.quality }, enable_looted = true } end
-    local controller = surface.create_entity { name = PREFIX .. "controller", position = position, force = force }
-    if controller then
-      s.accounts[unit] = nil
-      s.accounts[controller.unit_number] = cf
-      cf.controller = controller
-      for _, machine in pairs(cf.machines) do machine.controller_unit_number = controller.unit_number end
-      labels.account(cf)
-    else
-      game.print("[color=red]Cashflow Freeplay could not rebuild the Account " .. cf.name .. "; place a new Account and relink its stations.[/color]")
-    end
-  end
-  if #legacy > 0 then for _, player in pairs(game.players) do gui.refresh_player(player) end end
-end
 
--- Fresh save: stamp the current layout version (no migration warning needed).
-script.on_init(function()
-  local s = state()
-  s.station_layout_version = STATION_LAYOUT_VERSION
-  normalize_layouts()
-end)
--- Existing save loaded under mismatched compatibility: warn players that every station
--- building changed footprint and must be mined/re-placed, then normalize in place.
-script.on_configuration_changed(function()
-  local s = state()
-  if s.station_layout_version ~= STATION_LAYOUT_VERSION then
-    s.station_layout_version = STATION_LAYOUT_VERSION
-    game.print("[color=yellow]Cashflow Freeplay station buildings are larger now. Mine and re-place every station before reconnecting its perimeter belt ports.[/color]")
-  end
-  migrate_legacy_controllers()
-  normalize_layouts()
-end)
--- Placing any cf-freeplay-* entity (build, blueprint, robot, script-revive, or clone)
+script.on_init(normalize_layouts)
+script.on_configuration_changed(normalize_layouts)
+-- Placing any cashflow-* entity (build, blueprint, robot, script-revive, or clone)
 -- goes through `register`, which builds its hidden helper ports or creates its account.
 local build_events = { defines.events.on_built_entity, defines.events.on_robot_built_entity, defines.events.script_raised_built, defines.events.script_raised_revive }
 for _, event in ipairs(build_events) do
@@ -275,7 +228,7 @@ end
 script.on_event(defines.events.on_entity_cloned, function(e)
   register(e.destination)
 end)
--- Mining/killing/destroying a cf-freeplay-* entity tears it down via `remove`.
+-- Mining/killing/destroying a cashflow-* entity tears it down via `remove`.
 local remove_events = { defines.events.on_player_mined_entity, defines.events.on_robot_mined_entity, defines.events.on_entity_died, defines.events.script_raised_destroy }
 for _, event in ipairs(remove_events) do script.on_event(event, function(e) remove(e.entity) end) end
 -- Opening a controller or machine entity shows its configuration panel. A controller is a
@@ -302,14 +255,14 @@ script.on_event(defines.events.on_gui_click, function(e)
   local p, el = game.get_player(e.player_index), e.element
   if not (el and el.valid) then return end
   local tags = el.tags
-  if tags and tags.cf_freeplay_close then gui.close(p); return end
-  if tags and tags.cf_freeplay_hints then return gui.toggle_hints(p) end
-  if tags and tags.cf_freeplay_locate then
+  if tags and tags.cashflow_close then gui.close(p); return end
+  if tags and tags.cashflow_hints then return gui.toggle_hints(p) end
+  if tags and tags.cashflow_locate then
     local machine = machine_from_tags(tags)
     local owner = machine and state().accounts[machine.controller_unit_number]
-    if not (owner and owner.controller.valid and player_can_access(p, owner)) then return show_error(p, { "cf-gui.locate-unlinked" }) end
+    if not (owner and owner.controller.valid and player_can_access(p, owner)) then return show_error(p, { "cashflow-gui.locate-unlinked" }) end
     local at = owner.controller.position
-    return p.print({ "cf-gui.locate-message", owner.name, string.format("[gps=%d,%d,%s]", math.floor(at.x), math.floor(at.y), owner.controller.surface.name) })
+    return p.print({ "cashflow-gui.locate-message", owner.name, string.format("[gps=%d,%d,%s]", math.floor(at.x), math.floor(at.y), owner.controller.surface.name) })
   end
   if el.name ~= "toggle" then return end
   gui.clear_error(p)

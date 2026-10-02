@@ -1,7 +1,7 @@
 data:extend({
   {
     type = "int-setting",
-    name = "cf-freeplay-month-seconds",
+    name = "cashflow-month-seconds",
     setting_type = "runtime-global",
     default_value = 60,
     minimum_value = 10,

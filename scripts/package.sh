@@ -13,7 +13,7 @@ stage="$(mktemp -d)"
 trap 'rm -rf "$stage"' EXIT
 
 mkdir "$stage/$folder"
-for item in info.json changelog.txt thumbnail.png control.lua data.lua settings.lua locale migrations script graphics THIRD_PARTY_LICENSES.md; do
+for item in info.json changelog.txt thumbnail.png control.lua data.lua settings.lua locale script graphics THIRD_PARTY_LICENSES.md; do
   [[ -e "$root/$item" ]] && cp -R "$root/$item" "$stage/$folder/"
 done
 mkdir -p "$out"

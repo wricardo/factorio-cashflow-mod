@@ -1,4 +1,4 @@
--- Data stage: declares the eight placeable cf-freeplay-* stations plus their hidden/locked
+-- Data stage: declares the eight placeable cashflow-* stations plus their hidden/locked
 -- helper belt/splitter/chest prototypes. The five storage stations are Warehousing-derived
 -- art, the controller is Sosciencity's Computing Center (see THIRD_PARTY_LICENSES.md), and the
 -- Smelter/Coal Supply reuse vanilla electric-furnace/electric-mining-drill art unmodified;
@@ -24,13 +24,13 @@ local function picture(filename, shadow, width, height, scale, shadow_shift)
   return {
     layers = {
       {
-        filename = "__cashflow-freeplay__/graphics/warehouse/" .. filename,
+        filename = "__cashflow__/graphics/warehouse/" .. filename,
         width = width,
         height = height,
         scale = scale,
       },
       {
-        filename = "__cashflow-freeplay__/graphics/warehouse/" .. shadow,
+        filename = "__cashflow__/graphics/warehouse/" .. shadow,
         width = width,
         height = height,
         shift = shadow_shift,
@@ -46,7 +46,7 @@ end
 local STOREHOUSE = { collision = 1.2, selection = 1.5, scale = 0.4, width = 256, height = 256, shadow = "storehouse-shadow.png", shadow_shift = { 0, 0 } }
 local WAREHOUSE = { collision = 2.7, selection = 3.0, scale = 0.38, width = 520, height = 480, shadow = "warehouse-shadow.png", shadow_shift = { 0.76, 0 } }
 -- Smelter: the vanilla electric furnace's static base layers (its working glow becomes the
--- cf-freeplay-smelter-heater animation below, drawn by script only while a batch smelts).
+-- cashflow-smelter-heater animation below, drawn by script only while a batch smelts).
 local furnace = data.raw.furnace["electric-furnace"]
 -- Coal Supply: first frame of the vanilla electric mining drill facing north (body, output
 -- chute, shadow); `x`/`y` default to 0, which selects frame 1 of each sheet.
@@ -59,10 +59,10 @@ local drill_picture = { layers = {
 -- Every station has its own 64px inventory icon. Seven original station assets in
 -- graphics/icons/ share a compact, top-down industrial visual language; the Controller retains
 -- its licensed Computing Center icon. No badge layering or vanilla item icon is reused.
-local ICONS = "__cashflow-freeplay__/graphics/icons/"
+local ICONS = "__cashflow__/graphics/icons/"
 local function station_icon(role) return { { icon = ICONS .. role .. ".png", icon_size = 64 } } end
 -- Crafting-menu row for all eight Cashflow items, right after vanilla Storage ("a").
-local SUBGROUP = { type = "item-subgroup", name = "cf-freeplay-stations", group = "logistics", order = "a[cashflow-freeplay]" }
+local SUBGROUP = { type = "item-subgroup", name = "cashflow-stations", group = "logistics", order = "a[cashflow]" }
 -- `inventory_size` defaults to 2000 slots. The Smelter holds exactly one month's coal batch
 -- (one 50-coal stack); Coal Supply holds 20 stacks, refilled by control.lua.
 local STATIONS = {
@@ -77,7 +77,7 @@ local STATIONS = {
 
 -- Builds one station's placeable entity/item/recipe triplet from a vanilla container/chest,
 -- re-skinned with Warehousing art (or a vanilla `picture`) and sized per STATIONS[role].
--- Recipe cost is fixed at 10 iron plates regardless of role; the "z[cashflow-freeplay]-N"
+-- Recipe cost is fixed at 10 iron plates regardless of role; the "z[cashflow]-N"
 -- order keeps stations in a fixed sequence within their own SUBGROUP row.
 local function anchor(name, source, order, role)
   local entity = table.deepcopy(data.raw["container"][source])
@@ -122,14 +122,14 @@ local splitter_source = data.raw.splitter["turbo-splitter"] and "turbo-splitter"
 -- Computing Center art from Sosciencity by tirisabella, Johanna Spieker and _traum, CC BY 4.0;
 -- see THIRD_PARTY_LICENSES.md. Sosciencity draws it as a 5x5 building at scale 0.5 with shift
 -- {0.5, -0.2}; both are multiplied by 3/5 here for the 3x3 footprint.
-local CONTROLLER_ART = "__cashflow-freeplay__/graphics/computing-center/computing-center"
+local CONTROLLER_ART = "__cashflow__/graphics/computing-center/computing-center"
 local function controller_layer(suffix, flag)
   local layer = { filename = CONTROLLER_ART .. suffix .. ".png", width = 640, height = 448, shift = { 0.3, -0.12 }, scale = 0.3 }
   if flag then layer[flag] = true end
   return layer
 end
 local function controller()
-  local name, order = "cf-freeplay-controller", "z[cashflow-freeplay]-1"
+  local name, order = "cashflow-controller", "z[cashflow]-1"
   local icon = CONTROLLER_ART .. "-icon.png"
   local entity = {
     type = "market", name = name, icon = icon, icon_size = 64,
@@ -159,22 +159,16 @@ local function controller()
   return entity, item, recipe
 end
 
--- Hidden helper prototypes: hub belt + splitter for station ports, three legacy/compat buffer
--- chests (landmark/ledger/vault-chest) retained for save migration in station_layout.lua, and
--- the pre-0.2.23 chest controller, which migrations/cashflow-freeplay_0.2.23.json renames to
--- cf-freeplay-legacy-controller so control.lua can swap it for the new controller in place.
+-- Hidden helper prototypes for station ports and the controller's marker.
 local prototypes = {
   SUBGROUP,
-  locked_copy("transport-belt", belt_source, "cf-freeplay-belt"),
-  locked_copy("splitter", splitter_source, "cf-freeplay-splitter"),
-  locked_copy("container", "iron-chest", "cf-freeplay-landmark", { inventory_size = 1 }),
-  locked_copy("container", "iron-chest", "cf-freeplay-ledger", { inventory_size = 1000 }),
-  locked_copy("container", "steel-chest", "cf-freeplay-vault-chest", { inventory_size = 2000 }),
-  locked_copy("container", "iron-chest", "cf-freeplay-legacy-controller", { inventory_size = 2000 }),
+  locked_copy("transport-belt", belt_source, "cashflow-belt"),
+  locked_copy("splitter", splitter_source, "cashflow-splitter"),
+  locked_copy("container", "iron-chest", "cashflow-landmark", { inventory_size = 1 }),
 }
 -- Smelter's 2-second working glow: the vanilla electric furnace heater + light layers.
 local heater = table.deepcopy(furnace.graphics_set.working_visualisations[1].animation)
-heater.type, heater.name = "animation", "cf-freeplay-smelter-heater"
+heater.type, heater.name = "animation", "cashflow-smelter-heater"
 prototypes[#prototypes + 1] = heater
 
 do
@@ -187,7 +181,7 @@ end
 -- (steel-chest for the two 6x6 buildings, iron-chest for the 3x3 ones).
 for index, role in ipairs({ "income", "expense", "cashflow", "debt", "vault", "smelter", "coal" }) do
   local source = (role == "cashflow" or role == "vault") and "steel-chest" or "iron-chest"
-  local entity, item, recipe = anchor("cf-freeplay-" .. role, source, "z[cashflow-freeplay]-" .. (index + 1), role)
+  local entity, item, recipe = anchor("cashflow-" .. role, source, "z[cashflow]-" .. (index + 1), role)
   prototypes[#prototypes + 1] = entity
   prototypes[#prototypes + 1] = item
   prototypes[#prototypes + 1] = recipe
@@ -197,7 +191,7 @@ end
 -- priority control.lua drives on a 100-tick duty cycle, so the chosen share of items leaves the
 -- left output. It links to no Account and needs no helper ports. Costs the vanilla splitter recipe.
 do
-  local name, order = "cf-freeplay-percent-splitter", "z[cashflow-freeplay]-9"
+  local name, order = "cashflow-percent-splitter", "z[cashflow]-9"
   local TINT = { 0.55, 0.85, 1 }
   -- Tints every non-shadow sprite layer under `node` (the splitter's own body, not its belts).
   local function tint_layers(node)

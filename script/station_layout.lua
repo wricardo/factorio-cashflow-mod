@@ -4,21 +4,21 @@
 local M = {}
 
 M.roles = {
-  controller = { helpers = { { key = "landmark", name = "cf-freeplay-landmark", x = 2, y = 0 } } },
-  income = { helpers = { { key = "out", name = "cf-freeplay-belt", x = 2, y = 0, label = "CASH OUT", cash = true, output = true } }, ports = { "out" } },
-  expense = { helpers = { { key = "out", name = "cf-freeplay-belt", x = 2, y = 0, label = "COPPER OUT", output = true } }, ports = { "out" } },
-  smelter = { helpers = { { key = "out", name = "cf-freeplay-belt", x = 2, y = 0, label = "CASH OUT", cash = true, output = true } }, ports = { "out" } },
+  controller = { helpers = { { key = "landmark", name = "cashflow-landmark", x = 2, y = 0 } } },
+  income = { helpers = { { key = "out", name = "cashflow-belt", x = 2, y = 0, label = "CASH OUT", cash = true, output = true } }, ports = { "out" } },
+  expense = { helpers = { { key = "out", name = "cashflow-belt", x = 2, y = 0, label = "COPPER OUT", output = true } }, ports = { "out" } },
+  smelter = { helpers = { { key = "out", name = "cashflow-belt", x = 2, y = 0, label = "CASH OUT", cash = true, output = true } }, ports = { "out" } },
   cashflow = { helpers = {
-    { key = "cash_in", name = "cf-freeplay-belt", x = -4, y = -2, label = "CASH IN", cash = true, output = false }, { key = "cash_in_2", name = "cf-freeplay-belt", x = -4, y = -4, label = "CASH IN", cash = true, output = false },
-    { key = "bills_in", name = "cf-freeplay-belt", x = -4, y = 2, label = "BILLS IN", output = false }, { key = "bills_in_2", name = "cf-freeplay-belt", x = -4, y = 4, label = "BILLS IN", output = false },
-    { key = "surplus_out", name = "cf-freeplay-belt", x = 4, y = -2, label = "SURPLUS OUT", cash = true, output = true }, { key = "unpaid_out", name = "cf-freeplay-belt", x = 4, y = 2, label = "UNPAID OUT", copper = true, output = true },
+    { key = "cash_in", name = "cashflow-belt", x = -4, y = -2, label = "CASH IN", cash = true, output = false }, { key = "cash_in_2", name = "cashflow-belt", x = -4, y = -4, label = "CASH IN", cash = true, output = false },
+    { key = "bills_in", name = "cashflow-belt", x = -4, y = 2, label = "BILLS IN", output = false }, { key = "bills_in_2", name = "cashflow-belt", x = -4, y = 4, label = "BILLS IN", output = false },
+    { key = "surplus_out", name = "cashflow-belt", x = 4, y = -2, label = "SURPLUS OUT", cash = true, output = true }, { key = "unpaid_out", name = "cashflow-belt", x = 4, y = 2, label = "UNPAID OUT", copper = true, output = true },
   }, ports = { "cash_in", "cash_in_2", "bills_in", "bills_in_2", "surplus_out", "unpaid_out" } },
   debt = { helpers = {
-    { key = "pay_in", name = "cf-freeplay-belt", x = -2, y = -1, label = "PAY IN", cash = true, output = false }, { key = "borrow_in", name = "cf-freeplay-belt", x = -2, y = 1, label = "BORROW IN", output = false },
-    { key = "interest_out", name = "cf-freeplay-belt", x = 2, y = 0, label = "INTEREST OUT", copper = true, output = true },
+    { key = "pay_in", name = "cashflow-belt", x = -2, y = -1, label = "PAY IN", cash = true, output = false }, { key = "borrow_in", name = "cashflow-belt", x = -2, y = 1, label = "BORROW IN", output = false },
+    { key = "interest_out", name = "cashflow-belt", x = 2, y = 0, label = "INTEREST OUT", copper = true, output = true },
   }, ports = { "pay_in", "borrow_in", "interest_out" } },
   vault = { helpers = {
-    { key = "deposit_in", name = "cf-freeplay-belt", x = -4, y = 0, label = "DEPOSIT IN", cash = true, output = false }, { key = "return_out", name = "cf-freeplay-belt", x = 4, y = 0, label = "RETURN OUT", cash = true, output = true },
+    { key = "deposit_in", name = "cashflow-belt", x = -4, y = 0, label = "DEPOSIT IN", cash = true, output = false }, { key = "return_out", name = "cashflow-belt", x = 4, y = 0, label = "RETURN OUT", cash = true, output = true },
   }, ports = { "deposit_in", "return_out" } },
 }
 
@@ -42,29 +42,11 @@ function M.build(anchor, role)
   return entities
 end
 
--- Pre-helper-port saves buffered income/expense directly in the anchor-adjacent "landmark"/
--- "chest" helper; migrates any leftover plates into the anchor's own inventory and drops the
--- now-redundant helper entity once it's empty.
-local function migrate_legacy_buffer(machine, key, item)
-  local legacy = machine.entities and machine.entities[key]
-  if not (legacy and legacy.valid and machine.anchor and machine.anchor.valid) then return end
-  local source = legacy.get_inventory(defines.inventory.chest)
-  local target = machine.anchor.get_inventory(defines.inventory.chest)
-  local count = source.get_item_count(item)
-  if count > 0 then
-    local moved = target.insert({ name = item, count = count })
-    if moved > 0 then source.remove({ name = item, count = moved }) end
-  end
-  if source.get_item_count(item) == 0 then legacy.destroy(); machine.entities[key] = nil end
-end
--- Migrates legacy buffer entities into the anchor and re-asserts EAST direction on every
--- helper belt (guards against accidental rotation). Called from control.lua's normalize_layouts.
+-- Re-assert EAST direction on every helper belt. Called from control.lua's normalize_layouts.
 function M.normalize(machine)
-  migrate_legacy_buffer(machine, "landmark", "copper-plate")
-  migrate_legacy_buffer(machine, "chest", "iron-plate")
   M.ensure_ports(machine)
   for _, entity in pairs(machine.entities or {}) do
-    if entity.valid and entity.name == "cf-freeplay-belt" then entity.direction = EAST end
+    if entity.valid and entity.name == "cashflow-belt" then entity.direction = EAST end
   end
 end
 -- Creates any helper-port entity declared in M.roles[machine.role] that machine.entities is

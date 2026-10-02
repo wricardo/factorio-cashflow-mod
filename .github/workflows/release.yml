@@ -43,7 +43,7 @@ jobs:
           TAG: ${{ github.ref_name }}
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          asset="dist/cashflow-freeplay_${VERSION}.zip"
+          asset="dist/cashflow_${VERSION}.zip"
           if gh release view "$TAG" >/dev/null 2>&1; then
             gh release upload "$TAG" "$asset" --clobber
           else

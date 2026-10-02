@@ -70,13 +70,13 @@ Defaults: $18,000 starting debt at 18% APR, $12,000 starting assets at 7% return
 
 For details, the command above downloads the public installer from this repository's `main` branch. It requires the built-in `curl` and `unzip` commands, queries GitHub for the newest published release, validates that the downloaded zip is a Cashflow archive, then installs it in `~/Library/Application Support/factorio/mods`. Set `FACTORIO_MODS_DIR` first to use a different Factorio mods directory. Requires Factorio 2.0 and the base game; Space Age is not needed.
 
-To inspect the script before running it, open [`scripts/install-latest.sh`](scripts/install-latest.sh). To build from source instead, run `npm run package` and copy `dist/cashflow-freeplay_<version>.zip` to Factorio's `mods` folder.
+To inspect the script before running it, open [`scripts/install-latest.sh`](scripts/install-latest.sh). To build from source instead, run `npm run package` and copy `dist/cashflow_<version>.zip` to Factorio's `mods` folder.
 
 ## Development
 
 ```bash
 npm test                  # plain-Lua tests against a fake Factorio runtime
-npm run package           # builds dist/cashflow-freeplay_<version>.zip
+npm run package           # builds dist/cashflow_<version>.zip
 npm run install:local     # builds, removes older local zips, installs, and enables the mod
 ```
 
@@ -92,7 +92,6 @@ Both need `lua` (5.4 is fine; the mod itself sticks to Lua 5.2 syntax) and `jq` 
 ```
 info.json  changelog.txt  control.lua  data.lua  settings.lua
 locale/      English strings, including every panel caption
-migrations/  prototype renames for old saves
 script/      accounting (pure money math), stations, account, pulse, labels, gui, rules, split, station_layout
 graphics/    icons and building art
 tests/       fake Factorio runtime and test suites, plus the manual checklist

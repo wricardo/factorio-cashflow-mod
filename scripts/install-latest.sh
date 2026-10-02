@@ -14,23 +14,23 @@ for command in curl unzip; do
 done
 
 release="$(curl -fsSL "$api")"
-asset_url="$(printf '%s' "$release" | tr ',' '\n' | sed -n 's/.*"browser_download_url":[[:space:]]*"\([^"]*cashflow-freeplay_[^"]*\.zip\)".*/\1/p' | head -n 1)"
+asset_url="$(printf '%s' "$release" | tr ',' '\n' | sed -n 's/.*"browser_download_url":[[:space:]]*"\([^"]*cashflow_[^"]*\.zip\)".*/\1/p' | head -n 1)"
 [[ -n "$asset_url" ]] || {
   echo "The latest release has no Cashflow zip asset." >&2
   exit 1
 }
 
-archive="$(mktemp -t cashflow-freeplay.XXXXXX.zip)"
+archive="$(mktemp -t cashflow.XXXXXX.zip)"
 trap 'rm -f "$archive"' EXIT
 curl -fsSL "$asset_url" -o "$archive"
 
 root="$(unzip -Z1 "$archive" | sed -n '1{s|/.*||;p;}')"
-[[ "$root" == cashflow-freeplay_* ]] && unzip -Z1 "$archive" | grep -qx "$root/info.json" || {
+[[ "$root" == cashflow_* ]] && unzip -Z1 "$archive" | grep -qx "$root/info.json" || {
   echo "Downloaded release is not a valid Cashflow mod archive." >&2
   exit 1
 }
 
 mkdir -p "$mods_dir"
-find "$mods_dir" -maxdepth 1 -type f -name 'cashflow-freeplay_*.zip' -delete
+find "$mods_dir" -maxdepth 1 -type f \( -name 'cashflow_*.zip' -o -name 'cashflow-freeplay_*.zip' \) -delete
 cp "$archive" "$mods_dir/${root}.zip"
 printf 'Installed %s in %s\nEnable Cashflow in Factorio’s Mods menu, then restart the game.\n' "$root" "$mods_dir"

@@ -196,7 +196,7 @@ function M.refresh_coal(entity)
   set_status(entity, defines.entity_status_diode.green, { "Coal " .. coal .. "/" .. capacity })
 end
 -- Percent Splitter: compact world label plus hover-pane status. `rec` is its record in
--- storage.cf_freeplay.splitters ({ entity, percent, label }); the render object is kept so a
+-- storage.cashflow.splitters ({ entity, percent, label }); the render object is kept so a
 -- change of percent replaces it instead of stacking labels.
 function M.splitter(rec)
   if rec.label and rec.label.valid then rec.label.destroy() end

@@ -1,4 +1,4 @@
--- Configuration panels (all named cf_freeplay_panel; exactly one per player at a time).
+-- Configuration panels (all named cashflow_panel; exactly one per player at a time).
 --   * Account (controller): a centered, draggable dialog in gui.screen registered as player.opened,
 --     so Esc/E close it like any vanilla window. It is a live dashboard plus the account setup.
 --   * Stations and the Percent Splitter: a panel docked in gui.left beside the vanilla entity
@@ -6,21 +6,21 @@
 -- Every panel has the same shape: titlebar (title + close button) and `body`, whose last child
 -- `error` shows validation messages inline. Root `tags` say which controller/machine/splitter
 -- the panel is bound to, so control.lua's gui_* handlers know where edits go.
--- All captions are locale keys (locale/en, section [cf-gui]); only money and names are passed in.
+-- All captions are locale keys (locale/en, section [cashflow-gui]); only money and names are passed in.
 local acc = require("script.accounting")
 local labels = require("script.labels")
 local rules = require("script.rules")
 local account = require("script.account")
 local stations = require("script.stations")
 local M = {}
-local ROOT = "cf_freeplay_panel"
+local ROOT = "cashflow_panel"
 local ERROR_COLOR = { 1, 0.45, 0.3 }
 local MUTED_COLOR = { 0.7, 0.7, 0.7 }
 M.ROOT = ROOT
 
 -- The single persistent state table (shared with control.lua/account.lua/stations.lua).
 local function state()
-  return storage.cf_freeplay
+  return storage.cashflow
 end
 -- True when `record` (a controller or machine) is on the same surface/force as `p`.
 local function valid_target(p, record)
@@ -47,7 +47,7 @@ local function add_frame(root, title, draggable)
   local filler = bar.add { type = "empty-widget", style = "draggable_space_header", ignored_by_interaction = true }
   filler.style.height = 24
   filler.style.horizontally_stretchable = true
-  bar.add { type = "sprite-button", name = "close", style = "frame_action_button", sprite = "utility/close", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black", tooltip = { "gui.close-instruction" }, tags = { cf_freeplay_close = true } }
+  bar.add { type = "sprite-button", name = "close", style = "frame_action_button", sprite = "utility/close", hovered_sprite = "utility/close_black", clicked_sprite = "utility/close_black", tooltip = { "gui.close-instruction" }, tags = { cashflow_close = true } }
   return root.add { type = "frame", name = "body", style = "inside_shallow_frame_with_padding", direction = "vertical" }
 end
 -- Hidden until show_error fills it; the last child of `body`.
@@ -128,7 +128,7 @@ local function add_dashboard(body)
   status.add { type = "progressbar", name = "month_bar" }.style.horizontally_stretchable = true
   local figures = status.add { type = "table", name = "figures", column_count = 2 }
   for _, key in ipairs({ "assets", "debt", "networth", "cashflow" }) do
-    figures.add { type = "label", caption = { "cf-gui.stat-" .. key } }
+    figures.add { type = "label", caption = { "cashflow-gui.stat-" .. key } }
     figures.add { type = "label", name = "stat_" .. key }
   end
   status.add { type = "label", name = "coverage_text" }
@@ -136,12 +136,12 @@ local function add_dashboard(body)
 end
 local function add_checklist(body, cf)
   local list = body.add { type = "flow", name = "checklist", direction = "vertical" }
-  list.add { type = "label", caption = { "cf-gui.needed-to-start" }, style = "bold_label" }
+  list.add { type = "label", caption = { "cashflow-gui.needed-to-start" }, style = "bold_label" }
   for _, requirement in ipairs(account.requirements(cf)) do list.add { type = "label", name = "req_" .. requirement.role } end
 end
 local function add_reports(body)
   local section = body.add { type = "flow", name = "reports", direction = "vertical", visible = false }
-  section.add { type = "label", caption = { "cf-gui.reports" }, style = "bold_label" }
+  section.add { type = "label", caption = { "cashflow-gui.reports" }, style = "bold_label" }
   section.add { type = "table", name = "reports_table", column_count = 6, tags = { signature = "" } }
 end
 -- Newest five yearly reports, rebuilt only when a new one has been closed.
@@ -155,7 +155,7 @@ local function sync_reports(body, cf)
   grid.tags = { signature = signature }
   grid.clear()
   if #reports == 0 then return end
-  for _, key in ipairs({ "year", "income", "expenses", "assets", "debt", "networth" }) do grid.add { type = "label", caption = { "cf-gui.col-" .. key }, style = "bold_label" } end
+  for _, key in ipairs({ "year", "income", "expenses", "assets", "debt", "networth" }) do grid.add { type = "label", caption = { "cashflow-gui.col-" .. key }, style = "bold_label" } end
   for i = #reports, math.max(1, #reports - 4), -1 do
     local report = reports[i]
     grid.add { type = "label", caption = tostring(report.year) }
@@ -166,10 +166,10 @@ end
 -- never rebuilt under the player.
 local function sync_controller(root, cf)
   local body = root.body
-  root.titlebar.title.caption = { "cf-gui.account-title", cf.name }
+  root.titlebar.title.caption = { "cashflow-gui.account-title", cf.name }
   local status = body.status
   local year, month = acc.calendar(cf.month)
-  status.month_text.caption = { "cf-gui.month-line", year, month, { cf.running and "cf-gui.state-running" or "cf-gui.state-paused" } }
+  status.month_text.caption = { "cashflow-gui.month-line", year, month, { cf.running and "cashflow-gui.state-running" or "cashflow-gui.state-paused" } }
   status.month_bar.value = math.min(1, cf.tick_in_month / rules.month_ticks())
   local assets = stations.vault_plates(cf) * acc.CENTS_PER_PLATE
   local figures = status.figures
@@ -179,19 +179,19 @@ local function sync_controller(root, cf)
   figures.stat_cashflow.caption = signed_money(labels.monthly_cashflow(cf))
   local expenses = account.monthly_expenses_cents(cf)
   local returns = account.monthly_returns_cents(cf)
-  status.coverage_text.caption = expenses > 0 and { "cf-gui.coverage", acc.money(returns), acc.money(expenses) } or { "cf-gui.coverage-none", acc.money(returns) }
+  status.coverage_text.caption = expenses > 0 and { "cashflow-gui.coverage", acc.money(returns), acc.money(expenses) } or { "cashflow-gui.coverage-none", acc.money(returns) }
   status.coverage_bar.visible = expenses > 0
   status.coverage_bar.value = expenses > 0 and math.min(1, returns / expenses) or 0
 
   local complete = true
   for _, requirement in ipairs(account.requirements(cf)) do
     complete = complete and requirement.linked
-    body.checklist["req_" .. requirement.role].caption = { "cf-gui.req-line", { "entity-name.cf-freeplay-" .. requirement.role }, { requirement.linked and "cf-gui.req-linked" or "cf-gui.req-missing" } }
+    body.checklist["req_" .. requirement.role].caption = { "cashflow-gui.req-line", { "entity-name.cashflow-" .. requirement.role }, { requirement.linked and "cashflow-gui.req-linked" or "cashflow-gui.req-missing" } }
   end
   body.checklist.visible = not cf.running
   local setup = body.setup
   local toggle = body.toggle
-  toggle.caption = { cf.running and "cf-gui.pause" or "cf-gui.start" }
+  toggle.caption = { cf.running and "cashflow-gui.pause" or "cashflow-gui.start" }
   toggle.enabled = cf.running or complete
   toggle.style = cf.running and "red_button" or "confirm_button"
   sync_reports(body, cf)
@@ -206,20 +206,20 @@ function M.open_controller(p, cf)
   local tags = { controller_unit_number = cf.controller.unit_number }
   local root = p.gui.screen.add { type = "frame", name = ROOT, direction = "vertical", tags = tags }
   root.auto_center = true
-  local body = add_frame(root, { "cf-gui.account-title", cf.name }, true)
+  local body = add_frame(root, { "cashflow-gui.account-title", cf.name }, true)
   body.style.minimal_width = 380
   add_dashboard(body)
   body.add { type = "line" }
   add_checklist(body, cf)
   local setup = body.add { type = "flow", name = "setup", direction = "vertical" }
-  setup.add { type = "label", caption = { "cf-gui.setup" }, style = "bold_label" }
-  add_field(setup, "account_name", { "cf-gui.account-name" }, cf.name, tags, true)
+  setup.add { type = "label", caption = { "cashflow-gui.setup" }, style = "bold_label" }
+  add_field(setup, "account_name", { "cashflow-gui.account-name" }, cf.name, tags, true)
   if cf.started then
-    setup.add { type = "label", caption = { "cf-gui.locked-debt", acc.money(cf.config.starting_debt_cents) } }
-    setup.add { type = "label", caption = { "cf-gui.locked-assets", acc.money(cf.config.starting_assets_cents) } }
+    setup.add { type = "label", caption = { "cashflow-gui.locked-debt", acc.money(cf.config.starting_debt_cents) } }
+    setup.add { type = "label", caption = { "cashflow-gui.locked-assets", acc.money(cf.config.starting_assets_cents) } }
   else
-    add_field(setup, "debt", { "cf-gui.starting-debt" }, tostring(cf.config.starting_debt_cents / 100), tags, true, { numeric = true, decimal = true, suffix = "$" })
-    add_field(setup, "assets", { "cf-gui.starting-assets" }, tostring(cf.config.starting_assets_cents / 100), tags, true, { numeric = true, decimal = true, suffix = "$" })
+    add_field(setup, "debt", { "cashflow-gui.starting-debt" }, tostring(cf.config.starting_debt_cents / 100), tags, true, { numeric = true, decimal = true, suffix = "$" })
+    add_field(setup, "assets", { "cashflow-gui.starting-assets" }, tostring(cf.config.starting_assets_cents / 100), tags, true, { numeric = true, decimal = true, suffix = "$" })
   end
   body.add { type = "button", name = "toggle", tags = tags }
   add_reports(body)
@@ -230,7 +230,7 @@ end
 
 -- ---------------------------------------------------------------- Station panels
 
--- How each station's ports connect; text lives in locale as cf-gui.hint-<role>.
+-- How each station's ports connect; text lives in locale as cashflow-gui.hint-<role>.
 local HINT_ROLES = { income = true, expense = true, smelter = true, cashflow = true, debt = true, vault = true }
 local function add_hints(body, p, role)
   if not HINT_ROLES[role] then return end
@@ -238,8 +238,8 @@ local function add_hints(body, p, role)
   s.hints_hidden = s.hints_hidden or {}
   local hidden = s.hints_hidden[p.index] or false
   local section = body.add { type = "flow", name = "hints_section", direction = "vertical" }
-  section.add { type = "button", name = "hints_toggle", caption = { hidden and "cf-gui.hints-show" or "cf-gui.hints-hide" }, tags = { cf_freeplay_hints = true } }
-  add_note(section, "hints_text", { "cf-gui.hint-" .. role }, true).visible = not hidden
+  section.add { type = "button", name = "hints_toggle", caption = { hidden and "cashflow-gui.hints-show" or "cashflow-gui.hints-hide" }, tags = { cashflow_hints = true } }
+  add_note(section, "hints_text", { "cashflow-gui.hint-" .. role }, true).visible = not hidden
 end
 -- Collapses or expands the "how to connect" text; remembered per player across panels.
 function M.toggle_hints(p)
@@ -251,7 +251,7 @@ function M.toggle_hints(p)
   local hidden = not s.hints_hidden[p.index]
   s.hints_hidden[p.index] = hidden
   section.hints_text.visible = not hidden
-  section.hints_toggle.caption = { hidden and "cf-gui.hints-show" or "cf-gui.hints-hide" }
+  section.hints_toggle.caption = { hidden and "cashflow-gui.hints-show" or "cashflow-gui.hints-hide" }
 end
 
 -- Machine panel: an account picker (with a locate button) plus whatever fields the station's
@@ -262,35 +262,35 @@ function M.open_machine(p, machine, controllers)
   close(p)
   local tags = { machine_unit_number = machine.unit_number }
   local root = p.gui.left.add { type = "frame", name = ROOT, direction = "vertical", tags = tags }
-  local body = add_frame(root, { "entity-name.cf-freeplay-" .. machine.role }, false)
+  local body = add_frame(root, { "entity-name.cashflow-" .. machine.role }, false)
   local owner = machine.controller_unit_number and controllers[machine.controller_unit_number]
   local linkable = not owner or not owner.running
-  local selected, items = 1, { { "cf-gui.unlinked" } }
+  local selected, items = 1, { { "cashflow-gui.unlinked" } }
   for _, cf in ipairs(M.account_choices(machine, controllers)) do
     local position = cf.controller.position
-    items[#items + 1] = { "cf-gui.choice", cf.name, math.floor(position.x), math.floor(position.y) }
+    items[#items + 1] = { "cashflow-gui.choice", cf.name, math.floor(position.x), math.floor(position.y) }
     if machine.controller_unit_number == cf.controller.unit_number then selected = #items end
   end
-  body.add { type = "label", caption = { "cf-gui.account" }, style = "bold_label" }
+  body.add { type = "label", caption = { "cashflow-gui.account" }, style = "bold_label" }
   local row = body.add { type = "flow", name = "account_row", direction = "horizontal" }
   row.add { type = "drop-down", name = "account", items = items, selected_index = selected, tags = tags, enabled = linkable }
-  row.add { type = "button", name = "locate", caption = { "cf-gui.locate" }, tooltip = { "cf-gui.locate-tooltip" }, tags = { cf_freeplay_locate = true, machine_unit_number = machine.unit_number } }
+  row.add { type = "button", name = "locate", caption = { "cashflow-gui.locate" }, tooltip = { "cashflow-gui.locate-tooltip" }, tags = { cashflow_locate = true, machine_unit_number = machine.unit_number } }
   local cap = acc.money(acc.MAX_STATION_CENTS)
-  local amount_caption = { income = "cf-gui.field-income", expense = "cf-gui.field-expense", smelter = "cf-gui.field-salary" }
+  local amount_caption = { income = "cashflow-gui.field-income", expense = "cashflow-gui.field-expense", smelter = "cashflow-gui.field-salary" }
   if amount_caption[machine.role] then
     add_field(body, "amount", { amount_caption[machine.role] }, tostring(machine.config.monthly_cents / 100), tags, true, { numeric = true, decimal = true, suffix = "$" })
-    add_note(body, "cap_hint", { "cf-gui.cap-hint", cap }, true)
+    add_note(body, "cap_hint", { "cashflow-gui.cap-hint", cap }, true)
   end
-  if machine.role == "smelter" then add_note(body, "coal_note", { "cf-gui.smelter-note", acc.SMELTER_COAL_PER_MONTH }, true) end
-  if machine.role == "debt" then add_field(body, "apr", { "cf-gui.field-apr" }, tostring(machine.config.apr), tags, true, { numeric = true, decimal = true, suffix = "%" }) end
-  if machine.role == "vault" then add_field(body, "return", { "cf-gui.field-return" }, tostring(machine.config.asset_return), tags, true, { numeric = true, decimal = true, suffix = "%" }) end
+  if machine.role == "smelter" then add_note(body, "coal_note", { "cashflow-gui.smelter-note", acc.SMELTER_COAL_PER_MONTH }, true) end
+  if machine.role == "debt" then add_field(body, "apr", { "cashflow-gui.field-apr" }, tostring(machine.config.apr), tags, true, { numeric = true, decimal = true, suffix = "%" }) end
+  if machine.role == "vault" then add_field(body, "return", { "cashflow-gui.field-return" }, tostring(machine.config.asset_return), tags, true, { numeric = true, decimal = true, suffix = "%" }) end
   if machine.role == "expense" then
-    body.add { type = "label", caption = { "cf-gui.category" } }
-    body.add { type = "switch", name = "category", switch_state = machine.config.category == "wants" and "right" or "left", left_label_caption = { "cf-gui.needs" }, right_label_caption = { "cf-gui.wants" }, tags = tags }
+    body.add { type = "label", caption = { "cashflow-gui.category" } }
+    body.add { type = "switch", name = "category", switch_state = machine.config.category == "wants" and "right" or "left", left_label_caption = { "cashflow-gui.needs" }, right_label_caption = { "cashflow-gui.wants" }, tags = tags }
   end
   if owner and owner.running then
-    add_note(body, "next_month_note", { "cf-gui.applies-next-month" }, true)
-    add_note(body, "locked_note", { "cf-gui.pause-to-relink", owner.name }, true)
+    add_note(body, "next_month_note", { "cashflow-gui.applies-next-month" }, true)
+    add_note(body, "locked_note", { "cashflow-gui.pause-to-relink", owner.name }, true)
   end
   add_hints(body, p, machine.role)
   add_error(body)
@@ -302,10 +302,10 @@ function M.open_splitter(p, rec)
   close(p)
   local tags = { splitter_unit_number = rec.entity.unit_number }
   local root = p.gui.left.add { type = "frame", name = ROOT, direction = "vertical", tags = tags }
-  local body = add_frame(root, { "entity-name.cf-freeplay-percent-splitter" }, false)
-  add_field(body, "percent", { "cf-gui.left-share" }, tostring(rec.percent), tags, true, { numeric = true, suffix = "%" })
+  local body = add_frame(root, { "entity-name.cashflow-percent-splitter" }, false)
+  add_field(body, "percent", { "cashflow-gui.left-share" }, tostring(rec.percent), tags, true, { numeric = true, suffix = "%" })
   body.add { type = "label", name = "summary", caption = labels.split_summary(rec.percent), tags = tags }
-  add_note(body, "split_note", { "cf-gui.left-explainer" }, true)
+  add_note(body, "split_note", { "cashflow-gui.left-explainer" }, true)
   add_error(body)
 end
 

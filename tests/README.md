@@ -14,7 +14,7 @@ Runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` on plain Lu
 npm run package
 ```
 
-Copy `dist/cashflow-freeplay_<version>.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+Copy `dist/cashflow_<version>.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
 
 ## Unrestricted Freeplay
 

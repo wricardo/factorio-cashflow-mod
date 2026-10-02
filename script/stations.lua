@@ -260,7 +260,7 @@ local function smelter(cf, ticks)
       if inv and inv.get_item_count(COAL) >= acc.SMELTER_COAL_PER_MONTH then
         inv.remove({ name = COAL, count = acc.SMELTER_COAL_PER_MONTH })
         machine.batch_done, machine.smelt_ticks = true, acc.SMELT_TICKS
-        machine.smelt_glow = rendering.draw_animation { animation = "cf-freeplay-smelter-heater", surface = machine.anchor.surface, target = machine.anchor }
+        machine.smelt_glow = rendering.draw_animation { animation = "cashflow-smelter-heater", surface = machine.anchor.surface, target = machine.anchor }
       end
     end
     machine.pending_salary = machine.pending_salary - M.push(machine.entities.out, IRON, machine.pending_salary)

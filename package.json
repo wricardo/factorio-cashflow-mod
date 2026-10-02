@@ -1,5 +1,5 @@
 {
-  "name": "cashflow-freeplay",
+  "name": "cashflow",
   "private": true,
   "scripts": {
     "test": "lua tests/run.lua . accounting_test split_test freeplay_test",

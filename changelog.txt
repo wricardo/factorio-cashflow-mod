@@ -1,4 +1,10 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.0
+  Major Features:
+    - Cleanly renamed every mod identifier, prototype, setting, remote interface, asset path, and package to Cashflow.
+  Info:
+    - This is a new mod identity; existing Cashflow Freeplay saves are not supported.
+---------------------------------------------------------------------------------------------------
 Version: 0.2.49
   Info:
     - Renamed the mod to Cashflow. Save-compatible internal names are unchanged.
@@ -9,7 +15,7 @@ Version: 0.2.48
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.47
   Graphics:
-    - Added an original industrial Cashflow Freeplay thumbnail.
+    - Added an original industrial Cashflow thumbnail.
 ---------------------------------------------------------------------------------------------------
 Version: 0.2.46
   Info:

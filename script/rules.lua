@@ -2,9 +2,9 @@
 -- Factorio API calls so it can be unit-tested with plain Lua.
 local M = {}
 
--- Length of one game month in ticks (the `cf-freeplay-month-seconds` runtime-global setting).
+-- Length of one game month in ticks (the `cashflow-month-seconds` runtime-global setting).
 function M.month_ticks()
-  return settings.global["cf-freeplay-month-seconds"].value * 60
+  return settings.global["cashflow-month-seconds"].value * 60
 end
 
 return M

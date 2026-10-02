@@ -3,7 +3,7 @@ local host_require = require
 local F = {}
 -- Item capacity of the fixed-size station chests (data.lua: slots x 50-item coal stacks);
 -- every other fake inventory is effectively unlimited.
-F.inventory_limits = { ["cf-freeplay-smelter"] = 50, ["cf-freeplay-coal"] = 1000 }
+F.inventory_limits = { ["cashflow-smelter"] = 50, ["cashflow-coal"] = 1000 }
 local function new_inventory(limit)
   local inv = { items = {} }
   local function total() local n = 0; for _, count in pairs(inv.items) do n = n + count end; return n end
@@ -74,7 +74,7 @@ end
 local locale
 local function load_locale()
   locale = {}
-  local path = ((arg and arg[1]) or ".") .. "/locale/en/cashflow-freeplay.cfg"
+  local path = ((arg and arg[1]) or ".") .. "/locale/en/cashflow.cfg"
   local file = assert(io.open(path, "r"))
   local section
   for line in file:lines() do
@@ -121,7 +121,7 @@ function F.new_player(index, surface)
   function p.create_local_flying_text(spec) p.flying_texts[#p.flying_texts + 1] = spec end
   return p
 end
-local default_settings = { ["cf-freeplay-month-seconds"] = 60 }
+local default_settings = { ["cashflow-month-seconds"] = 60 }
 function F.install(opts)
   opts = opts or {}; local h = { events = {}, nth = {}, logs = {}, tick = 0 }; local event_ids = {}
   local names = { "on_player_created", "on_chunk_generated", "on_gui_click", "on_runtime_mod_setting_changed", "on_player_main_inventory_changed", "on_built_entity", "on_player_mined_entity", "on_robot_mined_entity", "on_robot_built_entity", "on_entity_died", "script_raised_built", "script_raised_revive", "script_raised_destroy", "on_entity_cloned", "on_research_finished", "on_force_created", "on_gui_opened", "on_gui_confirmed", "on_gui_text_changed", "on_gui_selection_state_changed", "on_gui_closed", "on_gui_switch_state_changed" }
