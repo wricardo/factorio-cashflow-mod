@@ -10,12 +10,11 @@ local function destroy(machine)
   for _, label in pairs(machine.port_labels or {}) do if label.valid then label.destroy() end end
   machine.label, machine.port_labels = nil, {}
 end
--- Short world-label title for a role, and the full entity name used for panel captions.
--- Internal role keys (controller/income/vault/smelter) are unchanged so existing saves load.
-local TITLES = { income = "Passive Income", smelter = "Active Income", vault = "Investment Account" }
+-- One display name per role, used for panel titles, world labels, and error messages. Internal
+-- role keys (controller/income/vault/smelter) are unchanged so existing saves load.
 local DISPLAY_NAMES = { controller = "Account", income = "Passive Income", expense = "Expense Station", cashflow = "Cashflow Station", debt = "Debt Station", vault = "Investment Account", smelter = "Active Income", ["percent-splitter"] = "Percent Splitter" }
 local function title(role)
-  return TITLES[role] or role:sub(1, 1):upper() .. role:sub(2)
+  return DISPLAY_NAMES[role] or role:sub(1, 1):upper() .. role:sub(2)
 end
 function M.display_name(role) return DISPLAY_NAMES[role] end
 -- Two-line summary of a yearly report, shared by the chat announcement and the Account panel.
@@ -59,6 +58,7 @@ local function monthly_cashflow(cf)
   for _, machine in ipairs(cf.entities.expense) do expenses = expenses + machine.config.monthly_cents end
   return income - expenses
 end
+M.monthly_cashflow = monthly_cashflow
 -- Total iron-plate assets across every linked vault station, in cents.
 local function assets(cf)
   local cents = 0
@@ -108,7 +108,12 @@ local function finance_details(machine)
 end
 
 function M.machine_details(machine, cf)
-  if machine.role == "income" or machine.role == "expense" then return { acc.money(machine.config.monthly_cents) .. "/month" } end
+  if machine.role == "income" or machine.role == "expense" then
+    local rows = { acc.money(machine.config.monthly_cents) .. "/month" }
+    local planned = cf and cf.running and cf.plan and cf.plan[machine.role] and cf.plan[machine.role][machine.unit_number]
+    if planned and planned > 0 then rows[#rows + 1] = (machine.out or 0) > 0 and (machine.out .. " plates left to send") or "All plates sent" end
+    return rows
+  end
   if machine.role == "cashflow" then
     if not cf then return EMPTY_DETAILS end
     local cashflow = monthly_cashflow(cf)
@@ -145,6 +150,7 @@ end
 -- (Re)draws a compact world label plus helper-port labels, and refreshes the hover-pane status.
 function M.machine(machine, cf)
   destroy(machine)
+  machine.shown_out, machine.shown_running = machine.out, cf and cf.running or false
   if machine.anchor.valid then
     local details = M.machine_details(machine, cf)
     local text = title(machine.role) .. (#details > 0 and " • " .. table.concat(details, " • ") or "")
@@ -155,7 +161,8 @@ function M.machine(machine, cf)
       if port.label and entity and entity.valid then
         local port_offset_value, alignment = port_offset(port)
         machine.port_labels[port.key] = rendering.draw_text {
-          text = port.label, surface = entity.surface, target = entity, target_offset = port_offset_value, alignment = alignment,
+          text = (port.cash and "[item=iron-plate] " or "[item=copper-plate] ") .. port.label, surface = entity.surface, target = entity, target_offset = port_offset_value, alignment = alignment,
+          use_rich_text = true, only_in_alt_mode = true,
           color = port.cash and { 1, 1, 1 } or (port.copper and { 1, 0.5, 0.3 } or (port.output and { 0.4, 1, 0.4 } or { 1, 0.5, 0.3 })),
         }
       end

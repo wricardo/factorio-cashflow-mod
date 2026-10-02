@@ -50,8 +50,10 @@ local function new_surface(name, index)
   return s
 end
 local function new_gui_element(spec)
-  local el = { type = spec.type, name = spec.name, caption = spec.caption, text = spec.text, value = spec.value, tags = spec.tags, selected_index = spec.selected_index, items = spec.items, enabled = spec.enabled ~= false, visible = spec.visible ~= false, valid = true }
-  el.children = {}
+  local el = { valid = true, children = {}, style = {} }
+  for k, v in pairs(spec) do el[k] = v end
+  el.style_name, el.enabled, el.visible = spec.style, spec.enabled ~= false, spec.visible ~= false
+  el.style = {}
   function el.add(child_spec)
     if child_spec.name == "name" then error("LuaGuiElement contains a property or method with the same name.") end
     local child = new_gui_element(child_spec)
@@ -60,23 +62,69 @@ local function new_gui_element(spec)
     if child.name then el[child.name] = child end
     return child
   end
+  function el.clear()
+    for _, child in ipairs(el.children) do child.valid = false; if child.name then el[child.name] = nil end end
+    el.children = {}
+  end
   function el.destroy() el.valid = false; if el.parent and el.name then el.parent[el.name] = nil end end
   return el
 end
+-- Resolves a LocalisedString against the mod's real en locale file, so tests read the same text
+-- players see and a misspelled key fails instead of passing silently.
+local locale
+local function load_locale()
+  locale = {}
+  local path = ((arg and arg[1]) or "factorio/cashflow-freeplay") .. "/locale/en/cashflow-freeplay.cfg"
+  local file = assert(io.open(path, "r"))
+  local section
+  for line in file:lines() do
+    local name = line:match("^%[(.+)%]$")
+    if name then section = name
+    else
+      local key, text = line:match("^([^=#]+)=(.*)$")
+      if key then locale[section .. "." .. key] = text end
+    end
+  end
+  file:close()
+end
+function F.localise(value)
+  if type(value) ~= "table" then return tostring(value) end
+  if value[1] == "" then
+    local parts = {}
+    for i = 2, #value do parts[#parts + 1] = F.localise(value[i]) end
+    return table.concat(parts)
+  end
+  if not locale then load_locale() end
+  local text = locale[value[1]]
+  if not text then error("missing locale key " .. tostring(value[1])) end
+  return (text:gsub("__(%d+)__", function(i) return F.localise(value[tonumber(i) + 1]) end))
+end
 function F.new_player(index, surface)
-  local p = { index = index, valid = true, prints = {}, inventory = new_inventory(), surface = surface, position = { x = 0, y = 0 }, force = { index = 1 } }
-  p.gui = { left = new_gui_element({ type = "flow" }) }
+  local p = { index = index, valid = true, prints = {}, inventory = new_inventory(), surface = surface, position = { x = 0, y = 0 }, force = { index = 1 }, flying_texts = {} }
+  p.gui = { left = new_gui_element({ type = "flow" }), screen = new_gui_element({ type = "flow" }) }
+  -- Like the engine, replacing the open GUI asks the previous one to close (on_gui_closed).
+  local opened
+  setmetatable(p, {
+    __index = function(_, key) if key == "opened" then return opened end end,
+    __newindex = function(t, key, value)
+      if key ~= "opened" then return rawset(t, key, value) end
+      local previous = opened
+      opened = value
+      if previous and previous ~= value and t.on_closed then t.on_closed(previous) end
+    end,
+  })
   function p.get_main_inventory() return p.inventory end
   function p.teleport(pos, target) p.position, p.surface = pos, target end
   p.alerts = {}
   function p.print(msg) p.prints[#p.prints + 1] = msg end
   function p.add_custom_alert(entity, icon, message, show_on_map) p.alerts[#p.alerts + 1] = { entity = entity, icon = icon, message = message, show_on_map = show_on_map } end
+  function p.create_local_flying_text(spec) p.flying_texts[#p.flying_texts + 1] = spec end
   return p
 end
 local default_settings = { ["cf-freeplay-month-seconds"] = 60 }
 function F.install(opts)
   opts = opts or {}; local h = { events = {}, nth = {}, logs = {}, tick = 0 }; local event_ids = {}
-  local names = { "on_player_created", "on_chunk_generated", "on_gui_click", "on_runtime_mod_setting_changed", "on_player_main_inventory_changed", "on_built_entity", "on_player_mined_entity", "on_robot_mined_entity", "on_robot_built_entity", "on_entity_died", "script_raised_built", "script_raised_revive", "script_raised_destroy", "on_entity_cloned", "on_research_finished", "on_force_created", "on_gui_opened", "on_gui_confirmed", "on_gui_text_changed", "on_gui_selection_state_changed" }
+  local names = { "on_player_created", "on_chunk_generated", "on_gui_click", "on_runtime_mod_setting_changed", "on_player_main_inventory_changed", "on_built_entity", "on_player_mined_entity", "on_robot_mined_entity", "on_robot_built_entity", "on_entity_died", "script_raised_built", "script_raised_revive", "script_raised_destroy", "on_entity_cloned", "on_research_finished", "on_force_created", "on_gui_opened", "on_gui_confirmed", "on_gui_text_changed", "on_gui_selection_state_changed", "on_gui_closed", "on_gui_switch_state_changed" }
   for i, name in ipairs(names) do event_ids[name] = i end
   _G.defines = { events = event_ids, direction = { north = 0, east = 4, south = 8, west = 12 }, inventory = { chest = 1 }, entity_status_diode = { green = 1, yellow = 2, red = 3 } }
   local g = {}; for k, v in pairs(default_settings) do g[k] = { value = (opts.settings and opts.settings[k]) or v } end; _G.settings = { global = g }
@@ -92,7 +140,7 @@ function F.install(opts)
   _G.prototypes = { item = {} }
   h.frames = {}
   _G.rendering = {
-    draw_text = function(spec) local obj = { text = spec.text, color = spec.color, target_offset = spec.target_offset, alignment = spec.alignment, valid = true }; function obj.destroy() obj.valid = false end; return obj end,
+    draw_text = function(spec) local obj = { text = spec.text, color = spec.color, target_offset = spec.target_offset, alignment = spec.alignment, use_rich_text = spec.use_rich_text, only_in_alt_mode = spec.only_in_alt_mode, valid = true }; function obj.destroy() obj.valid = false end; return obj end,
     draw_rectangle = function(spec) h.frames[#h.frames + 1] = spec; local obj = { valid = true }; function obj.destroy() obj.valid = false end; return obj end,
     draw_animation = function() local obj = { valid = true }; function obj.destroy() obj.valid = false end; return obj end,
   }
@@ -102,14 +150,21 @@ function F.install(opts)
   host_require("control")
   _G.require = function() error("Require can't be used outside of control.lua parsing.") end
   function h.fire(name, event) event = event or {}; event.name = event_ids[name]; local fn = h.events[event_ids[name]]; if fn then fn(event) end end
-  function h.add_player() local p = F.new_player(#_G.game.players + 1, surfaces.nauvis); _G.game.players[p.index] = p; _G.game.connected_players[#_G.game.connected_players + 1] = p; h.fire("on_player_created", { player_index = p.index }); return p end
+  function h.add_player()
+    local p = F.new_player(#_G.game.players + 1, surfaces.nauvis)
+    p.on_closed = function(previous) h.fire("on_gui_closed", { player_index = p.index, element = previous.type and previous or nil, entity = not previous.type and previous or nil }) end
+    _G.game.players[p.index] = p; _G.game.connected_players[#_G.game.connected_players + 1] = p; h.fire("on_player_created", { player_index = p.index }); return p
+  end
   function h.build(name, player, position) local e = new_entity(surfaces.nauvis, { name = name, position = position, force = player.force }); h.fire("on_built_entity", { player_index = player.index, entity = e }); return e end
   function h.build_robot(name, position) local e = new_entity(surfaces.nauvis, { name = name, position = position }); h.fire("on_robot_built_entity", { entity = e }); return e end
   function h.mine(entity, player) entity.valid = false; h.fire("on_player_mined_entity", { player_index = player.index, entity = entity }) end
-  function h.open(player, entity) h.fire("on_gui_opened", { player_index = player.index, entity = entity }) end
+  function h.open(player, entity) player.opened = entity; h.fire("on_gui_opened", { player_index = player.index, entity = entity }) end
   function h.confirm(player, element) h.fire("on_gui_confirmed", { player_index = player.index, element = element }) end
   function h.text(player, element, text) element.text = text; h.fire("on_gui_text_changed", { player_index = player.index, element = element }) end
   function h.select(player, element, index) element.selected_index = index; h.fire("on_gui_selection_state_changed", { player_index = player.index, element = element }) end
+  function h.switch(player, element, state) element.switch_state = state; h.fire("on_gui_switch_state_changed", { player_index = player.index, element = element }) end
+  -- Esc/E: the engine asks whatever GUI is open to close.
+  function h.escape(player) player.opened = nil end
   function h.run_ticks(n) for _ = 1, n do h.tick = h.tick + 1; for every, fn in pairs(h.nth) do if h.tick % every == 0 then fn({ tick = h.tick }) end end end end
   return h
 end

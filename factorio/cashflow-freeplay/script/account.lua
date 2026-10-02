@@ -75,14 +75,36 @@ function M.normalize(cf)
   cf.won = nil
   stations.refresh_totals(cf)
 end
+-- The stations an Account needs before it can Start, in display order, each with whether at
+-- least one is linked. Drives both `can_start` and the Account panel's checklist.
+function M.requirements(cf)
+  local list = {}
+  for _, role in ipairs({ "cashflow", "debt", "vault" }) do list[#list + 1] = { role = role, linked = #cf.entities[role] > 0 } end
+  return list
+end
 -- Start is blocked unless at least one Cashflow Station, Debt Station, and Investment Account is
 -- linked. Returns false + a human-readable reason naming the missing stations.
-
 function M.can_start(cf)
   local missing = {}
-  for _, role in ipairs({ "cashflow", "debt", "vault" }) do if #cf.entities[role] == 0 then missing[#missing + 1] = labels.display_name(role) end end
+  for _, requirement in ipairs(M.requirements(cf)) do if not requirement.linked then missing[#missing + 1] = labels.display_name(requirement.role) end end
   if #missing > 0 then return false, "Missing linked " .. table.concat(missing, ", ") .. "." end
   return true
+end
+-- What every Investment Account is expected to return per month at its current balance, in cents.
+function M.monthly_returns_cents(cf)
+  local total = 0
+  for _, machine in ipairs(cf.entities.vault) do
+    local inv = machine.anchor.valid and machine.anchor.get_inventory(defines.inventory.chest)
+    local held = (inv and inv.get_item_count("iron-plate") or 0) * acc.CENTS_PER_PLATE
+    total = total + acc.monthly_amount(held, machine.config.asset_return)
+  end
+  return total
+end
+-- Sum of every linked Expense Station's configured monthly amount, in cents.
+function M.monthly_expenses_cents(cf)
+  local total = 0
+  for _, machine in ipairs(cf.entities.expense) do total = total + machine.config.monthly_cents end
+  return total
 end
 -- Plates each income/expense station must emit this month, rounded up from its monthly cents.
 

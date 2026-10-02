@@ -6,7 +6,7 @@
 npm run package:factorio
 ```
 
-Copy `factorio/dist/cashflow-freeplay_0.2.42.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
+Copy `factorio/dist/cashflow-freeplay_0.2.43.zip` to Factorio's `mods` directory, enable it, and create or load an ordinary Freeplay save. Enabling the mod must leave the terrain, player location, inventory, and game speed unchanged.
 ## Unrestricted Freeplay
 
 Cashflow Freeplay does not disable, reject, or change availability of any vanilla building, item, recipe, ghost, research, power system, vehicle, combat entity, or rail infrastructure. The finance stations coexist with an ordinary Factorio base.
@@ -70,6 +70,15 @@ Version `0.2.41` puts a Debt Station's `PAY IN` on top and `BORROW IN` below it.
 
 Version `0.2.42` makes Passive Income and Expense stations release their whole planned monthly total as soon as the month starts, instead of pacing it across the month. The belt then carries the plates away as fast as it can, so a large amount still takes belt time to leave (one yellow belt moves about 15 plates per second, so 1,000 plates take about a minute); any plates still waiting at month end are handled as before (unsent bills are added to debt). Active Income is unchanged: its salary is paid after its 2-second smelt.
 
+Version `0.2.43` reworks the panels and labels:
+
+- **Account dialog.** Opening an Account shows a centered, draggable dialog (not a left-side panel) that Esc, E, or its `X` button closes. It is a live dashboard: month progress bar, `Assets`, `Debt`, `Net worth`, monthly `Cashflow`, and a bar showing how much of the monthly expenses the Investment Accounts' returns cover (informational; there is still no winning condition). It refreshes in place twice a second, so a field you are typing in is never rebuilt.
+- **Start checklist.** Until a Cashflow Station, Debt Station, and Investment Account are linked, the dialog lists each as `linked`/`missing` and `Start` is disabled. After the first Start, starting debt and assets show as plain locked text.
+- **Station panels** stay docked beside the vanilla window and now close when that window closes (Esc/E). Number fields accept only digits (and a decimal point) with a `$`/`%` suffix; income and expense show their cap under the field. Validation errors appear in red inside the panel instead of chat. Expense `Needs`/`Wants` is a switch. The Account picker lists each account with its position (`Name (x, y)`) so equal names can be told apart, and `Locate` prints a clickable map link in chat. A `Show/Hide how to connect` section explains each station's ports; the choice is remembered per player.
+- **Yearly reports** are a table (Year, Income, Expenses, Assets, Debt, Net worth), newest five.
+- **World.** Port labels carry the plate icon (iron for cash, copper for bills) and show only in alt mode. Passive Income and Expense labels show `N plates left to send` while the account runs and the belt is still taking plates, then `All plates sent`. Closing a month floats `Year Y Month M closed` with cash in, bills, and paid above each Cashflow Station for 4 seconds. World labels use the same names as panels (`Cashflow Station`, `Debt Station`, `Expense Station`).
+- Panel text lives in `locale/en` (section `[cf-gui]`); world labels and chat messages are still built in code.
+
 ## Earned income
 
 1. Place a Coal Supply and an Active Income station apart from each other. Opening the Coal Supply must show only its chest window, with no Cashflow panel. Its label reads `Coal Supply`.
@@ -81,10 +90,10 @@ Version `0.2.42` makes Passive Income and Expense stations release their whole p
 ## One account
 
 1. Craft and place one Account, Passive Income, Expense Station, Cashflow Station, Debt Station, and Investment Account. Leave clear space around each building: Storehouse ports are two tiles from centre; Warehouse ports are four tiles from centre. The Account has no ports. Opening it must show only the Account panel, with no empty market or chest window.
-2. Open each station and select the Account. At least one Cashflow Station, Debt Station, and Investment Account is required before Start (the error names whichever is missing); Passive Income, Active Income, and Expense are optional. Configure income and expense amounts, each Debt Station's APR, and each Investment Account's return while the Account is paused.
+2. Open each station and select the Account. At least one Cashflow Station, Debt Station, and Investment Account is required before Start (the Account dialog's checklist shows whichever is missing and keeps `Start` disabled); Passive Income, Active Income, and Expense are optional. Configure income and expense amounts, each Debt Station's APR, and each Investment Account's return while the Account is paused.
 3. An Account may link any number of Cashflow Stations, Debt Stations, and Investment Accounts. On first Start, opening debt and assets are split evenly across the linked stations; any indivisible cents or plates go to the earliest linked stations. The Account totals every linked debt and asset balance. With two Cashflow Stations, feed cash into one and bills into the other: they must settle against each other, and month-end surplus must leave through both stations' `SURPLUS OUT`.
 4. Cash labels (`CASH IN`, `CASH OUT`, `PAY IN`, `DEPOSIT IN`, `RETURN OUT`, `SURPLUS OUT`) are white; copper `BILLS IN`, `BORROW IN`, `UNPAID OUT`, and `INTEREST OUT` are orange. Route `CASH OUT` to `CASH IN`, `COPPER OUT` to `BILLS IN`, `SURPLUS OUT` to `DEPOSIT IN`, `UNPAID OUT` to `BORROW IN`, `INTEREST OUT` to `BILLS IN`, and `RETURN OUT` to `CASH IN`.
-5. Start the Account. Passive Income and Expense chests fill with the month’s planned plates; each linked Cashflow Station shows the signed monthly cashflow; each Debt chest displays its own copper balance and emits interest at its own APR; each Investment Account displays its iron assets and emits returns at its own rate. World labels remain compact on one line. Hovering any station must show its live metrics in the hover pane's status row, replacing `Normal`: Debt Stations include `APR`, Investment Accounts include `Return rate`. The Account label aggregates every linked asset and debt balance, but does not show monthly cashflow. Every custom panel must close when its `Close` button is pressed.
+5. Start the Account. Passive Income and Expense chests fill with the month’s planned plates; each linked Cashflow Station shows the signed monthly cashflow; each Debt chest displays its own copper balance and emits interest at its own APR; each Investment Account displays its iron assets and emits returns at its own rate. World labels remain compact on one line. Hovering any station must show its live metrics in the hover pane's status row, replacing `Normal`: Debt Stations include `APR`, Investment Accounts include `Return rate`. The Account label aggregates every linked asset and debt balance, but does not show monthly cashflow. Every custom panel must close with its `X` button, and Esc/E must close the Account dialog and any station panel together with its vanilla window.
 
 Iron and copper have no account identity. A plate emitted by any Account's stations can enter another account's station; the receiving account processes it.
 
@@ -92,7 +101,7 @@ Iron and copper have no account identity. A plate emitted by any Account's stati
 
 1. Craft and place a Percent Splitter. Its label reads `Split 50% left • 50% right`; hovering shows `Left 50%` and `Right 50%`. Feed one belt of iron plates into one input and run belts away from both outputs: about half must go to each side.
 2. Open it. A `Percent Splitter` panel appears beside Factorio's own splitter window. Enter `30`: the label and the panel summary change to `Left 30% • Right 70%`, and over a minute about 30% of items leave the left output (left is the output on your left as items travel).
-3. Enter `0` and `100`: everything leaves the right, then everything leaves the left. Enter `250`: it clamps to 100. Enter text: nothing changes and chat reports `Enter a percent from 0 to 100.`.
+3. Enter `0` and `100`: everything leaves the right, then everything leaves the left. Enter `250`: it clamps to 100. Enter text: nothing changes and the panel shows `Enter a percent from 0 to 100.` in red.
 4. Block one output belt: all items leave through the other output. Unblock it: the configured split resumes.
 5. Mine the splitter: its label disappears. A normal vanilla splitter next to it is unaffected.
 

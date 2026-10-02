@@ -26,7 +26,20 @@ local function close_year(cf)
     gui.refresh_player(player)
   end
 end
-
+-- Floats a one-line summary of the month that just closed above each Cashflow Station, for every
+-- connected player on the account's force (shown on the station's own surface only).
+local function announce_month(cf, report)
+  local year, month = acc.calendar(cf.month - 1)
+  local P = acc.CENTS_PER_PLATE
+  local text = "Year " .. year .. " Month " .. month .. " closed\nCash in " .. acc.money(report.cash_in * P) .. " • Bills " .. acc.money(report.bills_in * P) .. " • Paid " .. acc.money(report.paid * P)
+  for _, player in pairs(game.connected_players) do
+    if player.force.index == cf.force_index then
+      for _, machine in ipairs(cf.entities.cashflow) do
+        if machine.anchor.valid then player.create_local_flying_text { text = text, position = machine.anchor.position, surface = machine.anchor.surface, color = { 1, 1, 0.6 }, time_to_live = 240 } end
+      end
+    end
+  end
+end
 -- Runs the full month-close sequence described above for one running account.
 function M.close_month(cf)
   local waiting = cf.out.unpaid + cf.out.interest
@@ -65,6 +78,7 @@ function M.close_month(cf)
   cf.plan = account.plan_month(cf)
   account.reset_month(cf, true)
   account.fill_month_buffers(cf)
+  announce_month(cf, report)
   if (cf.month - 1) % 12 == 0 then close_year(cf) end
 end
 return M

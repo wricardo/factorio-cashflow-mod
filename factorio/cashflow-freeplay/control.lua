@@ -137,7 +137,8 @@ end
 local function controller_from_tags(tags) return tags and state().accounts[tags.controller_unit_number] end
 local function machine_from_tags(tags) return tags and state().machines[tags.machine_unit_number] end
 local function splitter_from_tags(tags) return tags and tags.splitter_unit_number and state().splitters[tags.splitter_unit_number] end
-local function show_error(player, text) player.print(text) end
+-- Validation messages appear inline in the player's open panel (chat only if none is open).
+local function show_error(player, text) gui.show_error(player, text) end
 -- Sets a Percent Splitter's left-output share (whole percent, clamped to 0-100) and relabels it.
 local function set_splitter_percent(rec, percent)
   rec.percent = split.clamp_percent(percent)
@@ -153,7 +154,7 @@ local function edit_splitter(p, rec, el, confirmed)
   end
   set_splitter_percent(rec, n)
   if confirmed then el.text = tostring(rec.percent) end
-  if el.parent and el.parent.summary then el.parent.summary.caption = labels.split_summary(rec.percent) end
+  gui.set_splitter_summary(p, labels.split_summary(rec.percent))
 end
 
 -- Script-interface query surface for external telemetry tools: per-account snapshot of
@@ -295,13 +296,24 @@ script.on_event(defines.events.on_gui_opened, function(e)
   else local machine = state().machines[entity.unit_number]; if machine then gui.open_machine(p, machine, state().accounts) end end
 end)
 -- "Start"/"Pause" button: Start validates required linked stations via account.start;
--- Pause just flips the flag so configuration can be edited again.
+-- Pause just flips the flag so configuration can be edited again. Also routes the small
+-- buttons: close (X), locate the linked account, and show/hide the connection hints.
 script.on_event(defines.events.on_gui_click, function(e)
   local p, el = game.get_player(e.player_index), e.element
   if not (el and el.valid) then return end
-  if el.tags and el.tags.cf_freeplay_close then gui.close(p); return end
+  local tags = el.tags
+  if tags and tags.cf_freeplay_close then gui.close(p); return end
+  if tags and tags.cf_freeplay_hints then return gui.toggle_hints(p) end
+  if tags and tags.cf_freeplay_locate then
+    local machine = machine_from_tags(tags)
+    local owner = machine and state().accounts[machine.controller_unit_number]
+    if not (owner and owner.controller.valid and player_can_access(p, owner)) then return show_error(p, { "cf-gui.locate-unlinked" }) end
+    local at = owner.controller.position
+    return p.print({ "cf-gui.locate-message", owner.name, string.format("[gps=%d,%d,%s]", math.floor(at.x), math.floor(at.y), owner.controller.surface.name) })
+  end
   if el.name ~= "toggle" then return end
-  local cf = controller_from_tags(el.tags)
+  gui.clear_error(p)
+  local cf = controller_from_tags(tags)
   if not player_can_access(p, cf) then return show_error(p, "Account is unavailable.") end
   if cf.running then cf.running = false else local ok, reason = account.start(cf, stations); if not ok then return show_error(p, reason) end end
   labels.account(cf); gui.open_controller(p, cf)
@@ -312,6 +324,7 @@ end)
 script.on_event(defines.events.on_gui_confirmed, function(e)
   local p, el = game.get_player(e.player_index), e.element
   if not (el and el.valid) then return end
+  gui.clear_error(p)
   local splitter = splitter_from_tags(el.tags)
   if splitter then return edit_splitter(p, splitter, el, true) end
   local cf = controller_from_tags(el.tags)
@@ -321,7 +334,7 @@ script.on_event(defines.events.on_gui_confirmed, function(e)
     if el.name == "account_name" then if value == "" or #value > 64 then return show_error(p, "Name must contain 1-64 characters.") end; cf.name = value
     elseif el.name == "debt" and not cf.started then local n = decimal(value, true); if not n then return show_error(p, "Starting debt must be a nonnegative number.") end; cf.config.starting_debt_cents = n
     elseif el.name == "assets" and not cf.started then local n = decimal(value, true); if not n then return show_error(p, "Starting assets must be a nonnegative number.") end; cf.config.starting_assets_cents = n end
-    labels.account(cf); return gui.open_controller(p, cf)
+    labels.account(cf); return gui.refresh_player(p)
   end
   local machine = machine_from_tags(el.tags)
   local owner = machine and state().accounts[machine.controller_unit_number]
@@ -358,23 +371,44 @@ script.on_event(defines.events.on_gui_text_changed, function(e)
   else return end
   labels.machine(machine, owner)
 end)
--- Dropdown changes: expense needs/wants category, or re-linking a machine to a different
--- controller (index 1 is "Unlinked"). Rejects link attempts while the target is running.
+-- Drop-down change: re-links a machine to a different account (index 1 is "Unlinked", the rest
+-- follow gui.account_choices). Rejects link attempts while the target is running.
 script.on_event(defines.events.on_gui_selection_state_changed, function(e)
   local p, el = game.get_player(e.player_index), e.element
-  if not (el and el.valid) then return end
+  if not (el and el.valid and el.name == "account") then return end
   local machine = machine_from_tags(el.tags)
   if not machine then return end
+  gui.clear_error(p)
   local owner = state().accounts[machine.controller_unit_number]
   if owner and not player_can_change(p, owner) then return show_error(p, "Pause the account before changing configuration.") end
-  if el.name == "category" then machine.config.category = el.selected_index == 2 and "wants" or "needs"; return end
-  if el.name == "account" then
-    if el.selected_index == 1 then unlink(machine); return end
-    local candidates = {}
-    for _, cf in pairs(state().accounts) do if same_place(cf, machine.anchor) then candidates[#candidates + 1] = cf end end
-    table.sort(candidates, function(a, b) return a.name < b.name end)
-    local selected = candidates[el.selected_index - 1]
-    if selected then local ok, err = link(machine, selected.controller.unit_number); if not ok then show_error(p, err) end end
+  if el.selected_index == 1 then unlink(machine); return end
+  local selected = gui.account_choices(machine, state().accounts)[el.selected_index - 1]
+  if selected then local ok, err = link(machine, selected.controller.unit_number); if not ok then show_error(p, err) end end
+end)
+-- Needs/wants switch on an Expense Station.
+script.on_event(defines.events.on_gui_switch_state_changed, function(e)
+  local p, el = game.get_player(e.player_index), e.element
+  if not (el and el.valid and el.name == "category") then return end
+  local machine = machine_from_tags(el.tags)
+  if not machine then return end
+  gui.clear_error(p)
+  local owner = state().accounts[machine.controller_unit_number]
+  if owner and not player_can_change(p, owner) then
+    el.switch_state = machine.config.category == "wants" and "right" or "left"
+    return show_error(p, "Pause the account before changing configuration.")
+  end
+  machine.config.category = el.switch_state == "right" and "wants" or "needs"
+  labels.machine(machine, owner)
+end)
+-- Esc/E closed a window: our Account dialog closes with itself; a docked station or splitter
+-- panel closes with the vanilla window it sits beside. (The Account's own entity window is
+-- ignored: it is closed by script on open, before the dialog exists.)
+script.on_event(defines.events.on_gui_closed, function(e)
+  local p = game.get_player(e.player_index)
+  if e.element then
+    if e.element.valid and e.element.name == gui.ROOT then gui.close(p) end
+  elseif e.entity then
+    gui.close_for_entity(p, e.entity)
   end
 end)
 -- Fast loop: advances each running account's belt I/O by SWEEP_TICKS and closes the month
@@ -424,11 +458,18 @@ end
 -- Coal Supply back up to full.
 script.on_nth_tick(REFRESH_TICKS, function(e)
   local s = state()
+  for _, player in pairs(game.connected_players) do gui.refresh_player(player) end
   for _, cf in pairs(s.accounts) do
     if cf.running then labels.account(cf) end
     for _, machine in ipairs(cf.entities.cashflow) do labels.machine(machine, cf) end
     for _, machine in ipairs(cf.entities.debt) do labels.machine(machine, cf) end
     for _, machine in ipairs(cf.entities.vault) do labels.machine(machine, cf) end
+    -- Income/expense labels show how many plates are still waiting for belt room; redraw only on change.
+    for _, role in ipairs({ "income", "expense" }) do
+      for _, machine in ipairs(cf.entities[role]) do
+        if machine.shown_out ~= machine.out or machine.shown_running ~= (cf.running or false) then labels.machine(machine, cf) end
+      end
+    end
     if e.tick % (REFRESH_TICKS * 2) == 0 and (cf.unpaid_blocked_ticks or 0) >= acc.UNPAID_ALERT_TICKS then alert_blocked_unpaid(cf) end
   end
   for _, machine in pairs(s.machines) do if machine.role == "smelter" then labels.machine(machine) end end

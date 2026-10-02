@@ -7,7 +7,23 @@ local function setup()
   local a, b = h.add_player(), h.add_player()
   return h, a, b
 end
-local function panel(player) return player.gui.left.cf_freeplay_panel end
+local L = fake.localise
+local function find(element, name)
+  for _, child in ipairs(element.children) do
+    if child.valid then
+      if child.name == name then return child end
+      local deep = find(child, name)
+      if deep then return deep end
+    end
+  end
+end
+-- The player's open panel (Account dialog on screen, station panels docked left). Elements are
+-- looked up by name anywhere inside it, since panels group fields into rows and sections.
+local function panel(player)
+  local root = player.gui.screen.cf_freeplay_panel or player.gui.left.cf_freeplay_panel
+  if not root then return nil end
+  return setmetatable({}, { __index = function(_, key) local v = root[key]; if v ~= nil then return v end; return find(root, key) end })
+end
 local function edit(h, player, element, text) element.text = text; h.confirm(player, element) end
 local function link(h, player, entity, index)
   h.open(player, entity)
@@ -80,7 +96,8 @@ function T.income_and_expense_amounts_are_capped_at_the_blue_belt_limit()
   edit(h, player, field, "99999.99")
   eq(me.config.monthly_cents, 2000000)
   eq(field.text, "20000")
-  eq(player.prints[#player.prints]:find("$20,000", 1, true) ~= nil, true)
+  eq(panel(player).error.visible, true, "the cap is explained inline in the panel")
+  eq(panel(player).error.caption:find("$20,000", 1, true) ~= nil, true)
   me.config.monthly_cents = 5000000
   h.configuration_changed({})
   eq(me.config.monthly_cents, 2000000, "saves with an over-cap amount are clamped on load")
@@ -114,7 +131,7 @@ function T.legacy_chest_controller_is_replaced_in_place_keeping_its_account()
   h.run_ticks(2)
   eq(cf.stats.cash_in, 3, "the migrated account keeps running its linked stations")
   h.open(player, new)
-  eq(panel(player).caption, "Account: " .. cf.name)
+  eq(L(panel(player).title.caption), "Account: " .. cf.name)
 end
 local function belt_count(belt, item) return belt.get_transport_line(1).get_item_count(item) + belt.get_transport_line(2).get_item_count(item) end
 function T.smelter_pays_its_salary_once_per_month_two_seconds_after_a_full_coal_batch()
@@ -262,10 +279,14 @@ function T.account_labels_omit_cashflow_while_cashflow_station_displays_it()
   local cashflow_machine = storage.cf_freeplay.machines[cashflow.unit_number]
   local debt_machine = storage.cf_freeplay.machines[debt.unit_number]
   local vault_machine = storage.cf_freeplay.machines[vault.unit_number]
-  eq(cashflow_machine.label.text, "Cashflow • Cashflow +$300/month")
-  eq(debt_machine.label.text, "Debt • Debt $18,000 • Interest $270/month")
+  eq(cashflow_machine.label.text, "Cashflow Station • Cashflow +$300/month")
+  eq(debt_machine.label.text, "Debt Station • Debt $18,000 • Interest $270/month")
   eq(vault_machine.label.text, "Investment Account • Assets $12,000 • Return $70/month")
-  eq(cashflow_machine.port_labels.cash_in.text, "CASH IN")
+  eq(cashflow_machine.port_labels.cash_in.text, "[item=iron-plate] CASH IN")
+  eq(cashflow_machine.port_labels.bills_in.text, "[item=copper-plate] BILLS IN")
+  eq(cashflow_machine.port_labels.cash_in.use_rich_text, true)
+  eq(cashflow_machine.port_labels.cash_in.only_in_alt_mode, true, "port labels only show in alt mode")
+  eq(cashflow_machine.label.only_in_alt_mode, nil, "station titles always show")
   eq(cashflow_machine.port_labels.cash_in.color[1], 1)
   eq(cashflow_machine.port_labels.cash_in.color[2], 1)
   eq(cashflow_machine.port_labels.bills_in.color[1], 1)
@@ -274,7 +295,7 @@ function T.account_labels_omit_cashflow_while_cashflow_station_displays_it()
   eq(cashflow_machine.port_labels.surplus_out.color[2], 1)
   eq(cashflow_machine.port_labels.unpaid_out.color[1], 1)
   eq(cashflow_machine.port_labels.unpaid_out.color[2], 0.5)
-  eq(storage.cf_freeplay.machines[income.unit_number].port_labels.out.text, "CASH OUT")
+  eq(storage.cf_freeplay.machines[income.unit_number].port_labels.out.text, "[item=iron-plate] CASH OUT")
   eq(storage.cf_freeplay.machines[income.unit_number].port_labels.out.color[1], 1)
   eq(storage.cf_freeplay.machines[income.unit_number].port_labels.out.color[2], 1)
   eq(debt_machine.port_labels.pay_in.color[1], 1)
@@ -318,11 +339,11 @@ function T.configuration_panels_have_close_buttons()
   local h, player = setup()
   local controller, income = h.build("cf-freeplay-controller", player), h.build("cf-freeplay-income", player)
   h.open(player, controller)
-  eq(panel(player).close.caption, "Close")
+  eq(panel(player).close.tags.cf_freeplay_close, true)
   h.fire("on_gui_click", { player_index = player.index, element = panel(player).close })
   eq(panel(player), nil, "controller panel closes")
   h.open(player, income)
-  eq(panel(player).close.caption, "Close")
+  eq(panel(player).close.tags.cf_freeplay_close, true)
   h.fire("on_gui_click", { player_index = player.index, element = panel(player).close })
   eq(panel(player), nil, "machine panel closes")
 end
@@ -334,7 +355,7 @@ function T.panels_start_errors_and_rates_use_the_new_names()
   local captions = { [income] = "Passive Income", [smelter] = "Active Income", [vault] = "Investment Account", [debt] = "Debt Station" }
   for entity, caption in pairs(captions) do
     h.open(player, entity)
-    eq(panel(player).caption, caption)
+    eq(L(panel(player).title.caption), caption)
   end
   link(h, player, debt, 2); link(h, player, vault, 2)
   h.open(player, debt); edit(h, player, panel(player).apr, "12")
@@ -343,7 +364,7 @@ function T.panels_start_errors_and_rates_use_the_new_names()
   eq(vault.custom_status.label:find("Return rate 5.5%", 1, true) ~= nil, true, "the configured return is shown in the hover pane")
   h.open(player, controller)
   h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
-  eq(player.prints[#player.prints], "Missing linked Cashflow Station.")
+  eq(panel(player).error.caption, "Missing linked Cashflow Station.")
 end
 function T.freeplay_allows_normal_buildings_and_items()
   local h, player = setup()
@@ -705,9 +726,10 @@ function T.a_yearly_report_closes_every_twelfth_month_and_nothing_wins()
   eq(announced:find("Income $1,200 • Expenses $480", 1, true) ~= nil, true)
   eq(announced:find("Net worth", 1, true) ~= nil, true)
   h.open(player, cf.controller)
-  local listed = false
-  for _, child in ipairs(panel(player).children) do if child.caption and child.caption:find("Year 1\nIncome $1,200", 1, true) then listed = true end end
-  eq(listed, true, "the Account panel lists the yearly report")
+  local cells = {}
+  for _, child in ipairs(panel(player).reports_table.children) do cells[#cells + 1] = child.caption end
+  eq(cells[7], "1"); eq(cells[8], "$1,200"); eq(cells[9], "$480")
+  eq(panel(player).reports.visible, true, "the Account panel lists the yearly report")
 end
 
 function T.unpaid_bills_stuck_on_a_blocked_unpaid_out_raise_an_alert()
@@ -789,7 +811,7 @@ function T.percent_splitter_drives_its_priority_from_the_configured_share()
   eq(panel(player).percent.text, "100")
   edit(h, player, panel(player).percent, "abc")
   eq(rec.percent, 100, "invalid text leaves the share alone")
-  eq(player.prints[#player.prints], "Enter a percent from 0 to 100.")
+  eq(panel(player).error.caption, "Enter a percent from 0 to 100.")
   h.run_ticks(1)
   eq(splitter.splitter_output_priority, "left", "100% always prioritises the left")
 end
@@ -844,5 +866,179 @@ function T.a_month_larger_than_the_belt_drains_at_belt_speed_not_month_pace()
   h.run_ticks(2)
   eq(belt_count(belt, "iron-plate"), 8, "as soon as the belt has room it takes more, with no per-tick pacing")
   eq(machine.out, 84)
+end
+
+local function click(h, player, element) h.fire("on_gui_click", { player_index = player.index, element = element }) end
+
+function T.escape_closes_the_account_dialog_and_docked_station_panels()
+  local h, player = setup()
+  local controller, income, expense = h.build("cf-freeplay-controller", player), h.build("cf-freeplay-income", player), h.build("cf-freeplay-expense", player)
+  h.open(player, controller)
+  local dialog = player.gui.screen.cf_freeplay_panel
+  eq(dialog ~= nil, true, "the Account is a dialog, and closing its own market window did not close it")
+  eq(player.opened, dialog, "it is registered as the open GUI so Esc and E close it")
+  h.escape(player)
+  eq(panel(player), nil, "Esc closes the Account dialog")
+  h.open(player, income)
+  eq(player.gui.left.cf_freeplay_panel ~= nil, true, "station panels dock beside the vanilla window")
+  h.escape(player)
+  eq(panel(player), nil, "closing the vanilla station window closes its panel")
+  h.open(player, income); h.open(player, expense)
+  eq(L(panel(player).title.caption), "Expense Station", "opening another station replaces the panel")
+  h.open(player, controller)
+  eq(player.gui.left.cf_freeplay_panel, nil, "opening the Account closes a docked station panel")
+  eq(panel(player) ~= nil, true)
+end
+
+function T.account_dashboard_shows_the_start_checklist_and_tracks_the_month_live()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local income, expense, cashflow, debt, vault = stations(h, player)
+  h.open(player, controller)
+  eq(panel(player).toggle.enabled, false, "Start is disabled until the required stations are linked")
+  eq(L(panel(player).req_debt.caption):find("missing", 1, true) ~= nil, true)
+  for _, entity in ipairs({ income, expense, cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, income); edit(h, player, panel(player).amount, "500")
+  h.open(player, expense); edit(h, player, panel(player).amount, "200")
+  h.open(player, controller)
+  eq(panel(player).toggle.enabled, true)
+  eq(L(panel(player).req_debt.caption):find("linked", 1, true) ~= nil, true)
+  click(h, player, panel(player).toggle)
+  eq(panel(player).checklist.visible, false, "the checklist is only for getting started")
+  local name_field = panel(player).account_name
+  h.run_ticks(1800)
+  eq(panel(player).account_name, name_field, "the live refresh updates in place and never rebuilds a field being edited")
+  eq(name_field.valid, true)
+  eq(name_field.enabled, false, "setup is read-only while running")
+  local bar = panel(player).month_bar.value
+  eq(bar > 0.45 and bar < 0.55, true, "half the month has elapsed, got " .. tostring(bar))
+  eq(L(panel(player).month_text.caption), "Year 1 • Month 1 • Running")
+  eq(panel(player).stat_assets.caption, "$12,000")
+  eq(panel(player).stat_debt.caption, "$18,000")
+  eq(panel(player).stat_networth.caption, "-$6,000")
+  eq(panel(player).stat_cashflow.caption, "+$300")
+  eq(L(panel(player).coverage_text.caption), "Investment returns cover $70 of $200 monthly expenses")
+  eq(math.abs(panel(player).coverage_bar.value - 0.35) < 0.001, true)
+  eq(L(panel(player).toggle.caption), "Pause")
+  click(h, player, panel(player).toggle)
+  eq(panel(player).debt, nil, "after the first Start the starting debt is a fact, not an editable field")
+  local locked = false
+  for _, child in ipairs(panel(player).setup.children) do
+    if type(child.caption) == "table" and L(child.caption) == "Starting debt: $18,000 (locked after first Start)" then locked = true end
+  end
+  eq(locked, true)
+end
+
+function T.accounts_with_the_same_name_are_told_apart_in_the_picker_and_can_be_located()
+  local h, player = setup()
+  local controllers = {}
+  for i = 0, 7 do
+    controllers[#controllers + 1] = h.build("cf-freeplay-controller", player, { x = i * 10, y = 0 })
+    storage.cf_freeplay.accounts[controllers[#controllers].unit_number].name = "Same"
+  end
+  local income = h.build("cf-freeplay-income", player)
+  local machine = storage.cf_freeplay.machines[income.unit_number]
+  h.open(player, income)
+  local items = panel(player).account.items
+  eq(#items, 9)
+  for i = 0, 7 do eq(L(items[i + 2]), "Same (" .. i * 10 .. ", 0)", "equal names list in placement order") end
+  click(h, player, panel(player).locate)
+  eq(L(panel(player).error.caption), "Select an account first.")
+  h.select(player, panel(player).account, 5)
+  eq(machine.controller_unit_number, controllers[4].unit_number, "the fourth entry is the account at (30, 0), not a name match")
+  click(h, player, panel(player).locate)
+  eq(L(player.prints[#player.prints]), "Same is at [gps=30,0,nauvis]")
+end
+
+function T.expense_category_is_a_switch_that_locks_while_running()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local income, expense, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ expense, cashflow, debt, vault }) do link(h, player, entity, 2) end
+  local machine = storage.cf_freeplay.machines[expense.unit_number]
+  h.open(player, expense)
+  eq(panel(player).category.switch_state, "left", "needs by default")
+  h.switch(player, panel(player).category, "right")
+  eq(machine.config.category, "wants")
+  eq(expense.custom_status.label:find("Category: wants", 1, true) ~= nil, true, "the hover pane follows the switch")
+  h.open(player, controller); click(h, player, panel(player).toggle)
+  h.open(player, expense)
+  eq(panel(player).category.enabled, false)
+  h.switch(player, panel(player).category, "left")
+  eq(machine.config.category, "wants", "a running account refuses the change")
+  eq(panel(player).category.switch_state, "right", "and the switch snaps back")
+end
+
+function T.connection_hints_collapse_and_are_remembered_per_player()
+  local h, a, b = setup()
+  local cashflow, debt = h.build("cf-freeplay-cashflow", a), h.build("cf-freeplay-debt", a)
+  h.open(a, cashflow)
+  eq(panel(a).hints_text.visible, true, "hints are open for new players")
+  eq(L(panel(a).hints_text.caption):find("SURPLUS OUT", 1, true) ~= nil, true)
+  click(h, a, panel(a).hints_toggle)
+  eq(panel(a).hints_text.visible, false)
+  eq(L(panel(a).hints_toggle.caption), "Show how to connect")
+  h.open(a, debt)
+  eq(panel(a).hints_text.visible, false, "the choice carries over to other stations")
+  h.open(b, cashflow)
+  eq(panel(b).hints_text.visible, true, "other players are unaffected")
+end
+
+function T.closing_a_month_floats_a_summary_above_each_cashflow_station()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local cashflow, debt, vault = h.build("cf-freeplay-cashflow", player), h.build("cf-freeplay-debt", player), h.build("cf-freeplay-vault", player)
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, controller); click(h, player, panel(player).toggle)
+  storage.cf_freeplay.accounts[controller.unit_number].entities.cashflow[1].entities.cash_in.get_transport_line(1).put("iron-plate", 7)
+  h.run_ticks(MONTH)
+  eq(#player.flying_texts, 1)
+  eq(player.flying_texts[1].position, cashflow.position)
+  eq(player.flying_texts[1].text:find("Year 1 Month 1 closed\nCash in $70", 1, true) ~= nil, true, player.flying_texts[1].text)
+end
+
+function T.income_labels_show_how_many_plates_still_wait_for_the_belt()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local income, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ income, cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, income); edit(h, player, panel(player).amount, "10000")
+  local machine = storage.cf_freeplay.machines[income.unit_number]
+  h.open(player, controller); click(h, player, panel(player).toggle)
+  h.run_ticks(60)
+  eq(machine.label.text:find("992 plates left to send", 1, true) ~= nil, true, machine.label.text)
+  local belt = machine.entities.out
+  for lane = 1, 2 do belt.get_transport_line(lane).remove_item({ name = "iron-plate", count = 99 }) end
+  h.run_ticks(60)
+  eq(machine.label.text:find("984 plates left to send", 1, true) ~= nil, true, "the label follows the belt draining")
+  h.open(player, controller); click(h, player, panel(player).toggle)
+  h.run_ticks(30)
+  eq(machine.label.text:find("plates left", 1, true), nil, "a paused account shows no send status")
+end
+
+local function resolve_captions(element)
+  if type(element.caption) == "table" then L(element.caption) end
+  if type(element.tooltip) == "table" and element.tooltip[1] ~= "gui.close-instruction" then L(element.tooltip) end
+  for _, item in ipairs(element.items or {}) do L(item) end
+  for _, key in ipairs({ "left_label_caption", "right_label_caption" }) do if element[key] then L(element[key]) end end
+  for _, child in ipairs(element.children) do resolve_captions(child) end
+end
+function T.every_panel_caption_resolves_to_a_real_locale_string()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local income, expense, cashflow, debt, vault = stations(h, player)
+  local smelter, splitter = h.build("cf-freeplay-smelter", player), h.build("cf-freeplay-percent-splitter", player)
+  local all = { income, expense, cashflow, debt, vault, smelter }
+  local function check(entity) h.open(player, entity); resolve_captions(player.gui.screen.cf_freeplay_panel or player.gui.left.cf_freeplay_panel) end
+  check(controller); check(splitter)
+  for _, entity in ipairs(all) do check(entity) end
+  for _, entity in ipairs({ cashflow, debt, vault }) do link(h, player, entity, 2) end
+  check(controller)
+  h.open(player, controller); click(h, player, panel(player).toggle)
+  resolve_captions(panel(player))
+  h.run_ticks(MONTH)
+  h.open(player, controller)
+  resolve_captions(panel(player))
+  for _, entity in ipairs(all) do check(entity) end
 end
 return T
