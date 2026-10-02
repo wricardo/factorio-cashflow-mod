@@ -145,14 +145,14 @@ function M.clear_cashflow(cf)
   end
 end
 
--- Keeps each income/expense station's output belt caught up with its planned monthly total,
--- spreading emission evenly across the month via accounting.due_by_tick.
-local function emit(cf, role, item, month_ticks)
+-- Releases each income/expense station's whole planned monthly total as soon as the month starts:
+-- in the month's first sweep the plates become owed to the belt (`machine.out`), and the belt
+-- then takes them as fast as it can carry them.
+local function emit(cf, role, item)
   for _, machine in ipairs(cf.entities[role]) do
     local planned, emitted = cf.plan[role][machine.unit_number] or 0, cf.emitted[role][machine.unit_number] or 0
-    local due = acc.due_by_tick(planned, cf.tick_in_month, month_ticks)
-    machine.out = (machine.out or 0) + due - emitted
-    cf.emitted[role][machine.unit_number] = due
+    machine.out = (machine.out or 0) + planned - emitted
+    cf.emitted[role][machine.unit_number] = planned
     local inv = inventory(machine.anchor)
     local placed = M.push(machine.entities.out, item, math.min(machine.out, inv and inv.get_item_count(item) or 0))
     if placed > 0 then inv.remove({ name = item, count = placed }); machine.out = machine.out - placed end
@@ -274,9 +274,9 @@ end
 -- output belts (capped by what each push actually accepts) and refreshes account totals.
 -- `cf.unpaid_blocked_ticks` counts consecutive ticks in which unpaid bills were waiting but not
 -- a single plate fit on any UNPAID OUT belt; control.lua turns that into an alert.
-function M.sweep(cf, ticks, month_ticks)
+function M.sweep(cf, ticks)
   cf.tick_in_month = cf.tick_in_month + ticks
-  emit(cf, "income", IRON, month_ticks); emit(cf, "expense", COPPER, month_ticks); cashflow(cf); debt(cf); vault(cf); smelter(cf, ticks)
+  emit(cf, "income", IRON); emit(cf, "expense", COPPER); cashflow(cf); debt(cf); vault(cf); smelter(cf, ticks)
   local e = cf.entities
   cf.out.surplus = cf.out.surplus - push_spread(e.cashflow, "surplus_out", IRON, cf.out.surplus)
   local unpaid_pushed = push_spread(e.cashflow, "unpaid_out", COPPER, cf.out.unpaid)

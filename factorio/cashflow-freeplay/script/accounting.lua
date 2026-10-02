@@ -34,13 +34,6 @@ function M.plates(dollars)
   return math.ceil(dollars / 10)
 end
 
--- How many of `total` plates should have been emitted by this tick, spread evenly over the month.
-function M.due_by_tick(total, tick_in_month, ticks_per_month)
-  ticks_per_month = ticks_per_month or M.TICKS_PER_MONTH
-  local t = math.min(math.max(tick_in_month, 0), ticks_per_month)
-  return math.floor(total * t / ticks_per_month)
-end
-
 -- One iron plate pays one copper bill.
 function M.match(iron, copper)
   local paired = math.min(iron, copper)

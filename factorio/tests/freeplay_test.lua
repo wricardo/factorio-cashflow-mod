@@ -752,7 +752,7 @@ function T.month_length_setting_sets_the_month_and_scales_station_caps()
   local cf = storage.cf_freeplay.accounts[controller.unit_number]
   h.run_ticks(1798)
   eq(cf.month, 1, "a 30 second month is still open at 1798 ticks")
-  eq(cf.emitted.income[income.unit_number], 99, "100 planned plates are spread over the 30 second month")
+  eq(cf.emitted.income[income.unit_number], 100, "all 100 planned plates were released when the month started")
   h.run_ticks(2)
   eq(cf.month, 2, "and the month closes at 1800 ticks")
   local spare = h.build("cf-freeplay-income", player)
@@ -809,5 +809,40 @@ function T.percent_splitter_cleans_up_and_is_settable_through_the_remote_interfa
   other.valid = false
   h.run_ticks(1)
   eq(next(storage.cf_freeplay.splitters), nil, "a splitter removed without an event is dropped on the next tick")
+end
+
+function T.income_and_expense_release_the_whole_month_as_soon_as_it_starts()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local income, expense, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ income, expense, cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, income); edit(h, player, panel(player).amount, "30")
+  h.open(player, expense); edit(h, player, panel(player).amount, "20")
+  h.open(player, controller)
+  h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  h.run_ticks(2)
+  local mi, me = storage.cf_freeplay.machines[income.unit_number], storage.cf_freeplay.machines[expense.unit_number]
+  eq(belt_count(mi.entities.out, "iron-plate"), 3, "3 planned income plates are on the belt after the first sweep")
+  eq(belt_count(me.entities.out, "copper-plate"), 2, "2 planned expense plates are on the belt after the first sweep")
+  eq(income.get_inventory().get_item_count("iron-plate"), 0, "the income chest is already empty")
+end
+
+function T.a_month_larger_than_the_belt_drains_at_belt_speed_not_month_pace()
+  local h, player = setup()
+  local controller = h.build("cf-freeplay-controller", player)
+  local income, _, cashflow, debt, vault = stations(h, player)
+  for _, entity in ipairs({ income, cashflow, debt, vault }) do link(h, player, entity, 2) end
+  h.open(player, income); edit(h, player, panel(player).amount, "1000")
+  h.open(player, controller)
+  h.fire("on_gui_click", { player_index = player.index, element = panel(player).toggle })
+  h.run_ticks(2)
+  local machine = storage.cf_freeplay.machines[income.unit_number]
+  local belt = machine.entities.out
+  eq(belt_count(belt, "iron-plate"), 8, "the belt is full after the first sweep")
+  eq(machine.out, 92, "the other 92 plates are owed and wait for room")
+  for lane = 1, 2 do belt.get_transport_line(lane).remove_item({ name = "iron-plate", count = 99 }) end
+  h.run_ticks(2)
+  eq(belt_count(belt, "iron-plate"), 8, "as soon as the belt has room it takes more, with no per-tick pacing")
+  eq(machine.out, 84)
 end
 return T

@@ -33,19 +33,6 @@ function T.calendar_rolls_year_every_twelve_months()
   eq(y25, 3); eq(m25, 1)
 end
 
-function T.emission_spreads_evenly_and_hits_total()
-  eq(acc.due_by_tick(500, 0), 0)
-  eq(acc.due_by_tick(500, 1800), 250)
-  eq(acc.due_by_tick(500, 3600), 500)
-  eq(acc.due_by_tick(500, 9999), 500)
-  local prev = 0
-  for t = 2, 3600, 2 do
-    local due = acc.due_by_tick(500, t)
-    assert(due >= prev, "emission must never go backwards")
-    prev = due
-  end
-end
-
 function T.one_iron_pays_one_copper()
   local paired, iron, copper = acc.match(10, 4)
   eq(paired, 4)

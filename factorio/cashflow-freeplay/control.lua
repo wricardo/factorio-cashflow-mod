@@ -385,7 +385,7 @@ script.on_nth_tick(SWEEP_TICKS, function()
   for _, cf in pairs(state().accounts) do
     if cf.running then
       if account.can_start(cf) then
-        stations.sweep(cf, SWEEP_TICKS, month_ticks)
+        stations.sweep(cf, SWEEP_TICKS)
         if cf.tick_in_month >= month_ticks then pulse.close_month(cf) end
       else
         cf.running = false
