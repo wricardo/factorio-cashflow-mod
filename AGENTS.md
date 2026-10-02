@@ -19,7 +19,7 @@ Player-facing names differ from internal IDs, which stay unchanged so existing s
 info.json  changelog.txt  control.lua  data.lua  settings.lua   mod entry points (shipped)
 locale/  migrations/  script/  graphics/  THIRD_PARTY_LICENSES.md   shipped
 tests/      fake Factorio runtime, test suites, and the manual in-game checklist (README.md); not shipped
-scripts/    package.sh; not shipped
+scripts/    package.sh and install-latest.sh; not shipped
 README.md  AGENTS.md  package.json                              not shipped
 ```
 
@@ -60,7 +60,7 @@ npm test
 npm run package
 ```
 
-The test command runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` against the repository root. Packaging produces `dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory.
+The test command runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` against the repository root. Packaging produces `dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory. `scripts/install-latest.sh` downloads the matching asset from the newest GitHub release and installs it on macOS; publish that script and the package zip with each player-facing release.
 
 **Always install after finishing a change to the mod.** Bump `info.json`'s version, add a matching `changelog.txt` entry, package, then copy the new zip into the user's mods folder and delete any other `cashflow-freeplay_*.zip` there, so Factorio loads exactly one version:
 
