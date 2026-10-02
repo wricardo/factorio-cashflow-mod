@@ -3,6 +3,16 @@
 A Factorio 2.0 mod that adds a personal-finance game to ordinary Freeplay. Iron plates are cash, copper plates are bills and debt, and you run your money with belts.
 
 Place an **Account**, link income, expense, debt and investment stations to it, and watch cashflow, debt and net worth change month by month. Each Account is independent, you can run several, and nothing in vanilla Freeplay is restricted.
+## Quick install — macOS
+
+Paste this into Terminal to install the newest published mod release:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/wricardo/factorio-cashflow-mod/main/scripts/install-latest.sh | bash
+```
+
+It replaces older Cashflow Freeplay zips, enables the mod, and prints the installed version. Start or restart Factorio afterward.
+
 
 ## How it works
 
@@ -28,7 +38,6 @@ Place an **Account**, link income, expense, debt and investment stations to it, 
 Every station is placed and crafted like any other building, in its own row of the Logistics tab.
 
 ### Wiring
-
 ```
 Passive Income  CASH OUT        → Cashflow CASH IN
 Active Income   CASH OUT        → Cashflow CASH IN
@@ -59,21 +68,16 @@ Defaults: $18,000 starting debt at 18% APR, $12,000 starting assets at 7% return
 
 ## Installing
 
-On macOS, paste this into Terminal to download and install the newest published release. It replaces any older Cashflow Freeplay zip in Factorio's `mods` folder.
+For details, the command above downloads the public installer from this repository's `main` branch. It requires the built-in `curl` and `unzip` commands, queries GitHub for the newest published release, validates that the downloaded zip is a Cashflow Freeplay archive, then installs it in `~/Library/Application Support/factorio/mods`. Set `FACTORIO_MODS_DIR` first to use a different Factorio mods directory. Requires Factorio 2.0 and the base game; Space Age is not needed.
 
-```bash
-curl -fsSL https://raw.githubusercontent.com/wricardo/factorio-cashflow-mod/main/scripts/install-latest.sh | bash
-```
-
-The command downloads the public installer from this repository's `main` branch. It requires the built-in `curl` and `unzip` commands, queries GitHub for the newest published release, validates that the downloaded zip is a Cashflow Freeplay archive, then installs it in `~/Library/Application Support/factorio/mods`. Set `FACTORIO_MODS_DIR` first to use a different Factorio mods directory. Enable **Cashflow Freeplay** in Factorio's Mods menu and restart the game.
-
-To inspect the script before running it, open [`scripts/install-latest.sh`](scripts/install-latest.sh). To build from source instead, run `npm run package` and copy `dist/cashflow-freeplay_<version>.zip` to Factorio's `mods` folder. Requires Factorio 2.0 and the base game; Space Age is not needed.
+To inspect the script before running it, open [`scripts/install-latest.sh`](scripts/install-latest.sh). To build from source instead, run `npm run package` and copy `dist/cashflow-freeplay_<version>.zip` to Factorio's `mods` folder.
 
 ## Development
 
 ```bash
-npm test          # plain-Lua tests against a fake Factorio runtime
-npm run package   # builds dist/cashflow-freeplay_<version>.zip
+npm test                  # plain-Lua tests against a fake Factorio runtime
+npm run package           # builds dist/cashflow-freeplay_<version>.zip
+npm run install:local     # builds, removes older local zips, installs, and enables the mod
 ```
 
 Both need `lua` (5.4 is fine; the mod itself sticks to Lua 5.2 syntax) and `jq` and `zip` for packaging. The in-game acceptance checklist is in [`tests/README.md`](tests/README.md); [`AGENTS.md`](AGENTS.md) describes the architecture.
@@ -92,7 +96,7 @@ migrations/  prototype renames for old saves
 script/      accounting (pure money math), stations, account, pulse, labels, gui, rules, split, station_layout
 graphics/    icons and building art
 tests/       fake Factorio runtime and test suites, plus the manual checklist
-scripts/     package.sh and install-latest.sh
+scripts/     package.sh, install-latest.sh, and build-install-local.sh
 ```
 
 ## Credits

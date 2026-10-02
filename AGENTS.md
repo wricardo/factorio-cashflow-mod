@@ -19,7 +19,7 @@ Player-facing names differ from internal IDs, which stay unchanged so existing s
 info.json  changelog.txt  control.lua  data.lua  settings.lua   mod entry points (shipped)
 locale/  migrations/  script/  graphics/  THIRD_PARTY_LICENSES.md   shipped
 tests/      fake Factorio runtime, test suites, and the manual in-game checklist (README.md); not shipped
-scripts/    package.sh and install-latest.sh; not shipped
+scripts/    package.sh, install-latest.sh, and build-install-local.sh; not shipped
 README.md  AGENTS.md  package.json                              not shipped
 ```
 
@@ -59,19 +59,12 @@ From repository root:
 ```bash
 npm test
 npm run package
+npm run install:local
 ```
 
-The test command runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` against the repository root. Packaging produces `dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory. `scripts/install-latest.sh` queries the newest GitHub release and installs the matching zip on macOS. Pushing a `v<info.json version>` tag runs `.github/workflows/release.yml`, which tests, packages, and publishes that zip.
+The test command runs `accounting_test.lua`, `split_test.lua` and `freeplay_test.lua` against the repository root. Packaging produces `dist/cashflow-freeplay_<version>.zip` with a top-level versioned mod directory. `npm run install:local` builds the working tree, removes older `cashflow-freeplay_*.zip` files from the macOS Factorio mods directory, installs the current zip, and enables it in `mod-list.json`; set `FACTORIO_MODS_DIR` to target an isolated mods directory. `scripts/install-latest.sh` queries the newest GitHub release and installs the matching zip on macOS. Pushing a `v<info.json version>` tag runs `.github/workflows/release.yml`, which tests, packages, and publishes that zip.
 
-**Always install after finishing a change to the mod.** Bump `info.json`'s version, add a matching `changelog.txt` entry, package, then copy the new zip into the user's mods folder and delete any other `cashflow-freeplay_*.zip` there, so Factorio loads exactly one version:
-
-```bash
-MODS="$HOME/Library/Application Support/factorio/mods"
-cp dist/cashflow-freeplay_<version>.zip "$MODS/"
-find "$MODS" -name 'cashflow-freeplay_*.zip' ! -name 'cashflow-freeplay_<version>.zip' -delete
-```
-
-`cashflow-freeplay` must stay `"enabled": true` in `$MODS/mod-list.json`. Report the installed version to the user.
+**Always run `npm run install:local` after finishing a change to the mod.** Bump `info.json`'s version and add a matching `changelog.txt` entry before player-facing releases. `cashflow-freeplay` must remain enabled in `$HOME/Library/Application Support/factorio/mods/mod-list.json`. Report the installed version to the user.
 
 The fake-Factorio suite is the primary local proof. Factorio 2.0.x is also installed at `/Applications/factorio.app`: for data-stage or save-migration changes, run it headless with an isolated `--config` (write-data under `/tmp`) and `--mod-directory`, using `--create <save>` and `--benchmark <save> --benchmark-ticks N`. A throwaway probe mod can `log()` state. Apart from installing the mod zip as above, never touch the user's real Factorio profile (saves, settings, other mods). Perform the relevant manual steps in `tests/README.md` for rendering, GUI, collision, and belt verification.
 

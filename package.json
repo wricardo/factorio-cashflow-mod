@@ -3,6 +3,7 @@
   "private": true,
   "scripts": {
     "test": "lua tests/run.lua . accounting_test split_test freeplay_test",
-    "package": "bash scripts/package.sh"
+    "package": "bash scripts/package.sh",
+    "install:local": "bash scripts/build-install-local.sh"
   }
 }
