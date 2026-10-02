@@ -15,7 +15,7 @@ for command in curl unzip; do
 done
 
 release="$(curl -fsSL "$api")"
-asset_url="$(printf '%s' "$release" | tr ',' '\n' | sed -n 's/.*"browser_download_url":"\([^"]*cashflow-freeplay_[^"]*\.zip\)".*/\1/p' | head -n 1)"
+asset_url="$(printf '%s' "$release" | tr ',' '\n' | sed -n 's/.*"browser_download_url":[[:space:]]*"\([^"]*cashflow-freeplay_[^"]*\.zip\)".*/\1/p' | head -n 1)"
 [[ -n "$asset_url" ]] || {
   echo "The latest release has no Cashflow Freeplay zip asset." >&2
   exit 1
