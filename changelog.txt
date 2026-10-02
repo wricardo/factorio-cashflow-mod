@@ -1,4 +1,8 @@
 ---------------------------------------------------------------------------------------------------
+Version: 1.0.1
+  Features:
+    - Added Rocket Fund. Deposit 100,000 iron plates ($1,000,000) to create a Cashflow Rocket Payload for a vanilla Rocket Silo; each launch raises the next target by 4%.
+---------------------------------------------------------------------------------------------------
 Version: 1.0.0
   Major Features:
     - Cleanly renamed every mod identifier, prototype, setting, remote interface, asset path, and package to Cashflow.

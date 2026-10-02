@@ -73,6 +73,7 @@ local STATIONS = {
   vault = { art = "warehouse-basic.png", spec = WAREHOUSE, icons = station_icon("vault") },
   smelter = { picture = table.deepcopy(furnace.graphics_set.animation), icons = station_icon("smelter"), spec = STOREHOUSE, inventory_size = 1 },
   coal = { picture = drill_picture, icons = station_icon("coal"), spec = STOREHOUSE, inventory_size = 20 },
+  fund = { art = "storehouse-requester.png", spec = STOREHOUSE, icons = station_icon("vault") },
 }
 
 -- Builds one station's placeable entity/item/recipe triplet from a vanilla container/chest,
@@ -179,7 +180,7 @@ do
 end
 -- One entity/item/recipe triplet per storage station role, built atop a vanilla chest
 -- (steel-chest for the two 6x6 buildings, iron-chest for the 3x3 ones).
-for index, role in ipairs({ "income", "expense", "cashflow", "debt", "vault", "smelter", "coal" }) do
+for index, role in ipairs({ "income", "expense", "cashflow", "debt", "vault", "smelter", "coal", "fund" }) do
   local source = (role == "cashflow" or role == "vault") and "steel-chest" or "iron-chest"
   local entity, item, recipe = anchor("cashflow-" .. role, source, "z[cashflow]-" .. (index + 1), role)
   prototypes[#prototypes + 1] = entity
@@ -221,6 +222,10 @@ do
   prototypes[#prototypes + 1] = entity
   prototypes[#prototypes + 1] = item
   prototypes[#prototypes + 1] = recipe
+prototypes[#prototypes + 1] = {
+  type = "item", name = "cashflow-rocket-payload", icon = "__base__/graphics/icons/iron-plate.png", icon_size = 64,
+  subgroup = SUBGROUP.name, order = "z[cashflow]-10", stack_size = 1, localised_name = { "item-name.cashflow-rocket-payload" },
+}
 end
 
 data:extend(prototypes)

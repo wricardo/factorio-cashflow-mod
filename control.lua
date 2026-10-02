@@ -10,12 +10,13 @@ local labels = require("script.labels")
 local gui = require("script.gui")
 local rules = require("script.rules")
 local split = require("script.split")
+local rocket = require("script.rocket")
 local SWEEP_TICKS, REFRESH_TICKS = 2, 30 -- belt sweep cadence (ticks); label/account refresh cadence (ticks)
 local PREFIX = "cashflow-" -- entity name prefix
 
 -- Lazily creates and returns the mod's single persistent state table.
 local function state()
-  storage.cashflow = storage.cashflow or { schema_version = 1, accounts = {}, machines = {}, splitters = {} }
+  storage.cashflow = storage.cashflow or { schema_version = 1, accounts = {}, machines = {}, splitters = {}, rocket_funds = {}, rocket_fund_plates = 0, rocket_launches = 0 }
   return storage.cashflow
 end
 -- Returns the station role ("controller", "income", "expense", "cashflow", "debt", "vault",
@@ -29,6 +30,7 @@ local function role_of(entity)
 end
 local COAL_SUPPLY = PREFIX .. "coal"
 local PERCENT_SPLITTER = PREFIX .. "percent-splitter"
+local ROCKET_FUND = PREFIX .. "fund"
 -- True when both records sit on the same surface and force (accounts never cross either).
 local function same_place(a, b) return a.surface_index == b.surface.index and a.force_index == b.force.index end
 -- Detaches a machine from its controller: removes it from cf.entities[role]/cf.machines and
@@ -76,6 +78,13 @@ local function register(entity)
     labels.coal_supply(entity)
     return
   end
+  if entity and entity.valid and entity.name == ROCKET_FUND and entity.unit_number then
+    local rec = { entity = entity }
+    s.rocket_funds = s.rocket_funds or {}
+    s.rocket_funds[entity.unit_number] = rec
+    rocket.refresh(rec, s)
+    return
+  end
   local role = role_of(entity)
   if not role or not entity.unit_number then return end
   local s = state()
@@ -105,6 +114,8 @@ local function remove(entity)
   s.coal_supplies[entity.unit_number] = nil
   local splitter = s.splitters[entity.unit_number]
   if splitter then labels.destroy_splitter(splitter); s.splitters[entity.unit_number] = nil; return end
+  local fund = s.rocket_funds and s.rocket_funds[entity.unit_number]
+  if fund then if fund.label and fund.label.valid then fund.label.destroy() end; s.rocket_funds[entity.unit_number] = nil; return end
   if cf then
     for _, machine in pairs(cf.machines) do machine.controller_unit_number = nil; labels.machine(machine) end
     labels.destroy_account(cf); s.accounts[entity.unit_number] = nil
@@ -216,6 +227,11 @@ local function normalize_layouts()
 end
 
 script.on_init(normalize_layouts)
+script.on_event(defines.events.on_rocket_launched, function(e)
+  if rocket.launched(state(), e.rocket) then
+    for _, player in pairs(game.connected_players) do player.print("Cashflow rocket launched. Next goal: " .. rocket.target(state().rocket_launches) .. " iron plates.") end
+  end
+end)
 script.on_configuration_changed(normalize_layouts)
 -- Placing any cashflow-* entity (build, blueprint, robot, script-revive, or clone)
 -- goes through `register`, which builds its hidden helper ports or creates its account.
@@ -423,6 +439,7 @@ script.on_nth_tick(REFRESH_TICKS, function(e)
   for unit, entity in pairs(s.coal_supplies) do
     if entity.valid then stations.refill_coal(entity); labels.refresh_coal(entity) else s.coal_supplies[unit] = nil end
   end
+  rocket.sweep(s)
 end)
 
 -- Drives every Percent Splitter's output priority from its configured share (script/split.lua).

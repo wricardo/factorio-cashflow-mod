@@ -124,7 +124,7 @@ end
 local default_settings = { ["cashflow-month-seconds"] = 60 }
 function F.install(opts)
   opts = opts or {}; local h = { events = {}, nth = {}, logs = {}, tick = 0 }; local event_ids = {}
-  local names = { "on_player_created", "on_chunk_generated", "on_gui_click", "on_runtime_mod_setting_changed", "on_player_main_inventory_changed", "on_built_entity", "on_player_mined_entity", "on_robot_mined_entity", "on_robot_built_entity", "on_entity_died", "script_raised_built", "script_raised_revive", "script_raised_destroy", "on_entity_cloned", "on_research_finished", "on_force_created", "on_gui_opened", "on_gui_confirmed", "on_gui_text_changed", "on_gui_selection_state_changed", "on_gui_closed", "on_gui_switch_state_changed" }
+  local names = { "on_player_created", "on_chunk_generated", "on_gui_click", "on_runtime_mod_setting_changed", "on_player_main_inventory_changed", "on_built_entity", "on_player_mined_entity", "on_robot_mined_entity", "on_robot_built_entity", "on_entity_died", "script_raised_built", "script_raised_revive", "script_raised_destroy", "on_entity_cloned", "on_research_finished", "on_force_created", "on_gui_opened", "on_gui_confirmed", "on_gui_text_changed", "on_gui_selection_state_changed", "on_gui_closed", "on_gui_switch_state_changed", "on_rocket_launched" }
   for i, name in ipairs(names) do event_ids[name] = i end
   _G.defines = { events = event_ids, direction = { north = 0, east = 4, south = 8, west = 12 }, inventory = { chest = 1 }, entity_status_diode = { green = 1, yellow = 2, red = 3 } }
   local g = {}; for k, v in pairs(default_settings) do g[k] = { value = (opts.settings and opts.settings[k]) or v } end; _G.settings = { global = g }
